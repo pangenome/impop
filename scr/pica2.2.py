@@ -1,41 +1,70 @@
 import sys
 import argparse
-import pandas as pd
 import os
+import csv
 
 def read_similarity_file(filename):
     """
     Read similarity data from file with columns: group.a, group.b, estimated.identity
-    Returns list of tuples [(element1, element2, similarity), ...]
+    Returns a tuple (similarity_dict, elements, pair_count) where:
+      * similarity_dict maps an unordered pair (min, max) to the similarity value
+      * elements is the set of unique group identifiers
+      * pair_count counts the number of rows parsed from the file
     """
     try:
-        # Try reading with pandas
-        df = pd.read_csv(filename, sep='\t')  # Assuming tab-separated
-        
-        # Check if required columns exist
-        required_cols = ['group.a', 'group.b', 'estimated.identity']
-        if not all(col in df.columns for col in required_cols):
-            print(f"Error: File must contain columns: {required_cols}")
-            print(f"Found columns: {list(df.columns)}")
-            sys.exit(1)
-        
-        # Convert to list of tuples
-        similarity_data = []
-        for _, row in df.iterrows():
-            similarity_data.append((row['group.a'], row['group.b'], row['estimated.identity']))
-        
-        return similarity_data
-        
+        with open(filename, newline='') as handle:
+            reader = csv.DictReader(handle, delimiter='\t')
+
+            if reader.fieldnames is None:
+                print(f"Error: File {filename} is empty or missing a header")
+                sys.exit(1)
+
+            required_cols = {'group.a', 'group.b', 'estimated.identity'}
+            missing_cols = required_cols - set(reader.fieldnames)
+            if missing_cols:
+                print(f"Error: File must contain columns: {sorted(required_cols)}")
+                print(f"Found columns: {reader.fieldnames}")
+                sys.exit(1)
+
+            similarity_dict = {}
+            elements = set()
+            pair_count = 0
+
+            for row_number, row in enumerate(reader, start=2):  # start=2 accounts for header row
+                pair_count += 1
+                e1 = row['group.a']
+                e2 = row['group.b']
+                try:
+                    similarity = float(row['estimated.identity'])
+                except (TypeError, ValueError):
+                    print(f"Error: Invalid similarity value on line {row_number}: {row['estimated.identity']}")
+                    sys.exit(1)
+
+                key = (e1, e2) if e1 <= e2 else (e2, e1)
+                similarity_dict[key] = similarity
+                elements.add(e1)
+                elements.add(e2)
+
+            if pair_count == 0:
+                print(f"Warning: No similarity entries found in {filename}")
+
+            return similarity_dict, elements, pair_count
+
+    except FileNotFoundError:
+        print(f"Error: File not found {filename}")
+        sys.exit(1)
     except Exception as e:
         print(f"Error reading file {filename}: {e}")
         sys.exit(1)
 
-def analyze_similarity_matrix(similarity_data, threshold=1.0, sequence_length=None, log_file=None, round_digits=None):
+def analyze_similarity_matrix(similarity_dict, elements, pair_count, threshold=1.0, sequence_length=None, log_file=None, round_digits=None):
     """
     Simple 3-step similarity matrix analysis
     
     Input: 
-        similarity_data: list of tuples [(element1, element2, similarity), ...]
+        similarity_dict: mapping of unordered pairs to similarity values
+        elements: set of unique element identifiers
+        pair_count: number of pairwise similarities parsed from the input file
         threshold: similarity threshold for grouping elements
         sequence_length: length of sequences to normalize pi per site
         log_file: file handle for logging output
@@ -48,21 +77,16 @@ def analyze_similarity_matrix(similarity_data, threshold=1.0, sequence_length=No
         if log_file:
             print(message, file=log_file)
     
-    # Build similarity dictionary
-    sim_dict = {}
-    elements = set()
-    
-    for e1, e2, sim in similarity_data:
-        # Round similarity if specified
-        if round_digits is not None:
-            sim = round(sim, round_digits)
-            
-        sim_dict[(e1, e2)] = sim
-        sim_dict[(e2, e1)] = sim  # Make symmetric
-        elements.add(e1)
-        elements.add(e2)
-    
-    log_print(f"Loaded {len(similarity_data)} pairwise similarities")
+    # Optionally round similarity values in-place to avoid duplicating data
+    if round_digits is not None:
+        for key in list(similarity_dict.keys()):
+            similarity_dict[key] = round(similarity_dict[key], round_digits)
+
+    def get_similarity(e1, e2):
+        key = (e1, e2) if e1 <= e2 else (e2, e1)
+        return similarity_dict.get(key)
+
+    log_print(f"Loaded {pair_count} pairwise similarities")
     log_print(f"Found {len(elements)} unique elements")
     if round_digits is not None:
         log_print(f"Rounded similarities to {round_digits} decimal places")
@@ -78,7 +102,8 @@ def analyze_similarity_matrix(similarity_data, threshold=1.0, sequence_length=No
         
         # Find all elements similar to current (above threshold)
         for other in list(remaining):
-            if sim_dict.get((current, other), 0) > threshold:
+            sim_value = get_similarity(current, other)
+            if sim_value is not None and sim_value > threshold:
                 group.append(other)
                 remaining.remove(other)
         
@@ -99,11 +124,8 @@ def analyze_similarity_matrix(similarity_data, threshold=1.0, sequence_length=No
             elem1, elem2 = groups[i][0], groups[j][0]
             
             # Check if we have similarity data for this pair
-            if (elem1, elem2) in sim_dict:
-                similarity = sim_dict[(elem1, elem2)]
-            elif (elem2, elem1) in sim_dict:
-                similarity = sim_dict[(elem2, elem1)]
-            else:
+            similarity = get_similarity(elem1, elem2)
+            if similarity is None:
                 log_print(f"Warning: No similarity data found between groups G{i+1} and G{j+1}, skipping...")
                 continue
             
@@ -159,7 +181,7 @@ if __name__ == "__main__":
     os.makedirs(args.log_dir, exist_ok=True)
     
     # Read similarity data from file
-    similarity_data = read_similarity_file(args.input_file)
+    similarity_dict, elements, pair_count = read_similarity_file(args.input_file)
     
     # Open log file and run analysis
     with open(log_filename, 'w') as log_file:
@@ -173,11 +195,15 @@ if __name__ == "__main__":
             log_file.write(f"Similarity rounding: {args.round_digits} decimal places\n")
         log_file.write(f"Log file: {log_filename}\n\n")
         
-        pi, pi_per_site = analyze_similarity_matrix(similarity_data, 
-                                                   threshold=args.threshold,
-                                                   sequence_length=args.sequence_length,
-                                                   log_file=log_file,
-                                                   round_digits=args.round_digits)
+        pi, pi_per_site = analyze_similarity_matrix(
+            similarity_dict,
+            elements,
+            pair_count,
+            threshold=args.threshold,
+            sequence_length=args.sequence_length,
+            log_file=log_file,
+            round_digits=args.round_digits,
+        )
         
         log_file.write(f"\n" + "="*50 + "\n")
         log_file.write(f"FINAL RESULTS:\n")
