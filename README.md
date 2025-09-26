@@ -20,10 +20,7 @@ Eavluate nucleotide diversity in the ACKR1 (DARC) gene region (chr1:158,340,000-
 Use the HPRCv2, coordinates are relative to chm13.  
 chr1:158,340,000-158,344,000
 
-0. make a bed file for windows 
-```
-echo -e "chr1\t158340000\t158344000" | bedtools  makewindows -b - -w 200   > ackr1.win.bed
-```
+###### one window 
 
 1.query the gfa to extract a window:
 ```
@@ -45,5 +42,14 @@ python3 ../scr/pica2.2.py  tmp.sim  -t .988  -l 200 -r 5
 impg similarity -p hprc465vschm13.aln.paf.gz -r CHM13#0#chr1:158341439-158341639 --sequence-files HPRC_r2_assemblies_0.6.1.agc
 ```
 
+###### multi-window
 
-echo -e "h1pat\t0\t607341" | bedtools  makewindows -b - -w 2000  > sim.regions.bed
+0. make a bed file for windows 
+```
+echo -e "chr1\t158340000\t158344000" | bedtools  makewindows -b - -w 200   > ackr1.win.bed
+```
+
+1. run the wrap (reccomended t 0.999, r 4 )
+```
+../impop/scr/pica2.4.sh -b ackr1.win.bed  -t 0.999 -r 4
+```
