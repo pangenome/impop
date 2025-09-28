@@ -20,7 +20,7 @@ $$\hat{\pi} = \frac{n}{n-1} \sum_{ij} x_i x_j \pi_{ij} = \frac{n}{n-1} \sum_{i=2
 Eavluate nucleotide diversity in the ACKR1 (DARC) gene region (chr1:158,340,000-158,344,000) in windows of 200bp
 Use the HPRCv2, coordinates are relative to chm13 
 
-#### impg query + odgi similarity + pica2.py
+### impg query + odgi similarity + pica2.py
 
 ###### one window 
 1.query the gfa to extract a window:
@@ -38,7 +38,7 @@ odgi similarity -i tmp.gfa > tmp.sim
 python3 ../scr/pica2.2.py  tmp.sim  -t .988  -l 200 -r 5
 ```
 
-###### pica2.4.sh: multi-window   
+###### wrap_pica2_impg_odgi.sh: multi-window   
 0. make a bed file for windows 
 ```
 echo -e "chr1\t158340000\t158344000" | bedtools  makewindows -b - -w 200   > ackr1.win.bed
@@ -46,11 +46,11 @@ echo -e "chr1\t158340000\t158344000" | bedtools  makewindows -b - -w 200   > ack
 
 1. run the wrap (reccomended t 0.999, r 4 )
 ```
-../impop/scr/pica2.4.sh -b ackr1.win.bed  -t 0.999 -r 4
+../impop/scr/wrap_pica2_impg_odgi.sh -b ackr1.win.bed  -t 0.999 -r 4
 ```
 
 
-#### impg similarity + pica2.py
+### impg similarity + pica2.py
 
 ###### one window 
 1-2.the first two commands can be substituted by a single command [need a fix for impg to work with agc]: 
@@ -63,3 +63,19 @@ impg similarity -p hprc465vschm13.aln.paf.gz -r CHM13#0#chr1:158341439-158341639
 python3 ../scr/pica2.2.py  tmp.sim  -t .988  -l 200 -r 5
 ```
 
+###### wrap_pica2_impg.sh: multi-window  
+0. make a bed file for windows 
+```
+echo -e "chr1\t158340000\t158344000" | bedtools  makewindows -b - -w 200   > ackr1.win.bed
+```
+
+ 1. run the wrap (reccomended t 0.999, r 4 )
+```
+../impop/scr/wrap_pica2_impg.sh -b ackr1.win.bed  -t 0.999 -r 4
+```
+
+
+###### one window with subsetting sequences 
+```
+impg similarity -p ../data/hprc465vschm13.aln.paf.gz -r CHM13#0#chr1:158341439-158341639 --sequence-files ../data/HPRC_r2_assemblies_0.6.1.agc  --subset-sequence-list  ../metadata/agc.EUR  > EUR.sim 
+```

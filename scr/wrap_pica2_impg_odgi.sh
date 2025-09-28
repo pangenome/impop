@@ -1,16 +1,37 @@
 #!/bin/bash
 
-# Set variables for easier modification
-BED_FILE="$1"  # Take BED file as first argument
+# Default values
 PAF_FILE="../data/hprc465vschm13.aln.paf.gz"
 SEQUENCE_FILES="../data/HPRC_r2_assemblies_0.6.1.agc"
-SCRIPT_PATH="../impop/scr/pica2.2.py"
+SCRIPT_PATH="pica2.2.py"
 
-# Check if BED file is provided
-if [ -z "$1" ]; then
-    echo "Usage: $0 <bed_file>"
-    echo "Example: $0 ackr1_win.bed"
+# Function to display usage
+usage() {
+    echo "Usage: $0 -b <bed_file> -t <threshold> -r <r_value>"
+    echo "  -b  BED file containing regions (required)"
+    echo "  -t  Similarity threshold for pica2.py (required)"
+    echo "  -r  R value for pica2.py (required)"
+    echo "  -h  Display this help message"
+    echo ""
+    echo "Example: $0 -b ackr1_win.bed -t 0.988 -r 5"
     exit 1
+}
+
+# Parse command line arguments
+while getopts "b:t:r:h" opt; do
+    case $opt in
+        b) BED_FILE="$OPTARG" ;;
+        t) THRESHOLD="$OPTARG" ;;
+        r) R_VALUE="$OPTARG" ;;
+        h) usage ;;
+        *) usage ;;
+    esac
+done
+
+# Check if all required arguments are provided
+if [ -z "$BED_FILE" ] || [ -z "$THRESHOLD" ] || [ -z "$R_VALUE" ]; then
+    echo "Error: Missing required arguments"
+    usage
 fi
 
 # Check if BED file exists
@@ -19,8 +40,20 @@ if [ ! -f "$BED_FILE" ]; then
     exit 1
 fi
 
+# Validate threshold is a number
+if ! [[ "$THRESHOLD" =~ ^[0-9]*\.?[0-9]+$ ]]; then
+    echo "Error: Threshold must be a number (e.g., 0.988)"
+    exit 1
+fi
+
+# Validate r value is a number
+if ! [[ "$R_VALUE" =~ ^[0-9]+$ ]]; then
+    echo "Error: R value must be an integer (e.g., 5)"
+    exit 1
+fi
+
 # Print header
-echo -e "REGION\tPICA_OUTPUT"
+echo -e "REGION\tLENGTH\tTHRESHOLD\tR_VALUE\tPICA_OUTPUT"
 
 # Process each line in the BED file
 while IFS=$'\t' read -r chr start end name; do
@@ -28,6 +61,9 @@ while IFS=$'\t' read -r chr start end name; do
     if [[ "$chr" == "#"* ]] || [ -z "$chr" ]; then
         continue
     fi
+    
+    # Calculate window length
+    LENGTH=$((end - start))
     
     # Construct the region string
     REGION="CHM13#0#${chr}:${start}-${end}"
@@ -67,11 +103,11 @@ while IFS=$'\t' read -r chr start end name; do
         fi
     } 2>/dev/null  # Suppress standard error for cleaner output
     
-    # Step 3: Evaluate nucleotide diversity and capture output
-    PICA_OUTPUT=$(python3 "$SCRIPT_PATH" tmp.sim -t .988 -l 200 -r 5 2>&1 | tr '\n' ' ' | sed 's/  */ /g' | sed 's/ *$//')
+    # Step 3: Evaluate nucleotide diversity with calculated length
+    PICA_OUTPUT=$(python3 "$SCRIPT_PATH" tmp.sim -t "$THRESHOLD" -l "$LENGTH" -r "$R_VALUE" 2>&1 | tr '\n' ' ' | sed 's/  */ /g' | sed 's/ *$//')
     
-    # Print region and pica output on same line
-    echo -e "${REGION}\t${PICA_OUTPUT}"
+    # Print region, parameters, and pica output on same line
+    echo -e "${REGION}\t${LENGTH}\t${THRESHOLD}\t${R_VALUE}\t${PICA_OUTPUT}"
     
     # Clean up temporary files before processing next region
     rm -f tmp.gfa tmp.sim

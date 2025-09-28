@@ -5,15 +5,14 @@ set -euo pipefail
 # Default paths
 PAF_FILE="../data/hprc465vschm13.aln.paf.gz"
 SEQUENCE_FILES="../data/HPRC_r2_assemblies_0.6.1.agc"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT_PATH="${SCRIPT_DIR}/pica2.py"
+SCRIPT_PATH="pica2.py"
 
 # Display usage information
 usage() {
     echo "Usage: $0 -b <bed_file> -t <threshold> -r <r_value>"
     echo "  -b  BED file containing regions (required)"
-    echo "  -t  Similarity threshold for pica2.py (required)"
-    echo "  -r  R value for pica2.py (required)"
+    echo "  -t  Similarity threshold for pica2.2.py (required)"
+    echo "  -r  R value for pica2.2.py (required)"
     echo "  -h  Display this help message"
     echo ""
     echo "Example: $0 -b ackr1_win.bed -t 0.988 -r 5"
