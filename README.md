@@ -7,6 +7,8 @@ Software required:
 - [impg](https://github.com/pangenome/impg)
 - [odgi](https://github.com/pangenome/odgi)
 
+[Dataset info](doc/hprc.datameta.info)
+
 ### Nucleotide diversity
 
 Sample-level unbiased estimator of average pairwise nucleotide diversity, with corrections for finite sample size [wiki](https://en.wikipedia.org/wiki/Nucleotide_diversity):
@@ -19,9 +21,9 @@ $$\hat{\pi} = \frac{n}{n-1} \sum_{ij} x_i x_j \pi_{ij} = \frac{n}{n-1} \sum_{i=2
 
 Evaluate nucleotide diversity in the ACKR1 (DARC) gene region (chr1:158,340,000-158,344,000) in windows of 200 bp. Use the HPRCv2 assembly; coordinates are relative to CHM13.
 
-### impg similarity + pica2.py
+#### impg similarity + pica2.py
 
-#### One window
+##### One window
 
 1. Generate the similarity matrix (requires impg support for AGC archives; adjust paths as needed):
 ```
@@ -34,7 +36,7 @@ python3 scripts/pica2.py tmp.sim -t 0.988 -l 200 -r 5
 ```
 
 
-#### One window with subsetting sequences
+##### One window with subsetting sequences
 
 Generate the similarity matrix from a subset of assemblies:
 ```
@@ -42,7 +44,7 @@ impg similarity -p ../data/hprc465vschm13.aln.paf.gz -r CHM13#0#chr1:158341439-1
 ```
 
 
-#### run_pica2_impg.sh: multi-window
+##### Multi-window: run_pica2_impg.sh 
 
 1. Prepare a BED file with windows (window size max 10kb as per impg similarity requirements):
 ```
