@@ -1,9 +1,11 @@
+<img src="img/impop1.png" alt="implicit pangenome diagram" align="right" width="220" />
+
 population genomics tools for implicit pangenomes
 
 Software required:
 - [agc](https://github.com/refresh-bio/agc)
-- impg
-- odgi
+- [impg](https://github.com/pangenome/impg)
+- [odgi](https://github.com/pangenome/odgi)
 
 ### Nucleotide diversity
 
@@ -63,4 +65,3 @@ Use `-p` and `-s` to override the default PAF and sequence archives, and `-u` to
 Add `-l <length>` when you need to override the window length passed to `pica2.py` (defaults to the BED interval size).
 
 Check `../impop/scripts/run_pica2_impg.sh -h` for the full option list.
-
