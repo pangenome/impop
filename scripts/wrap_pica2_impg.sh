@@ -5,14 +5,20 @@ set -euo pipefail
 # Default paths
 PAF_FILE="../data/hprc465vschm13.aln.paf.gz"
 SEQUENCE_FILES="../data/HPRC_r2_assemblies_0.6.1.agc"
-SCRIPT_PATH="pica2.py"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="${SCRIPT_DIR}/pica2.py"
 
 # Display usage information
 usage() {
-    echo "Usage: $0 -b <bed_file> -t <threshold> -r <r_value>"
+    echo "Usage: $0 -b <bed_file> -t <threshold> -r <r_value> [options]"
     echo "  -b  BED file containing regions (required)"
-    echo "  -t  Similarity threshold for pica2.2.py (required)"
-    echo "  -r  R value for pica2.2.py (required)"
+    echo "  -p  PAF file for impg similarity (default: $PAF_FILE)"
+    echo "  -s  Sequence files for impg similarity (default: $SEQUENCE_FILES)"
+    echo ""
+    echo "  pica2 options:"
+    echo "    -t  Similarity threshold for pica2.2.py (required)"
+    echo "    -r  R value for pica2.2.py (required)"
+    echo ""
     echo "  -h  Display this help message"
     echo ""
     echo "Example: $0 -b ackr1_win.bed -t 0.988 -r 5"
@@ -20,11 +26,13 @@ usage() {
 }
 
 # Parse command line options
-while getopts "b:t:r:h" opt; do
+while getopts "b:t:r:p:s:h" opt; do
     case $opt in
         b) BED_FILE="$OPTARG" ;;
         t) THRESHOLD="$OPTARG" ;;
         r) R_VALUE="$OPTARG" ;;
+        p) PAF_FILE="$OPTARG" ;;
+        s) SEQUENCE_FILES="$OPTARG" ;;
         h) usage ;;
         *) usage ;;
     esac
@@ -39,6 +47,18 @@ fi
 # Validate BED file exists
 if [ ! -f "$BED_FILE" ]; then
     echo "Error: BED file '$BED_FILE' not found"
+    exit 1
+fi
+
+# Validate PAF file exists
+if [ ! -f "$PAF_FILE" ]; then
+    echo "Error: PAF file '$PAF_FILE' not found"
+    exit 1
+fi
+
+# Validate sequence files exist
+if [ ! -f "$SEQUENCE_FILES" ]; then
+    echo "Error: Sequence file '$SEQUENCE_FILES' not found"
     exit 1
 fi
 
@@ -91,7 +111,13 @@ while IFS=$'\t' read -r chr start end name; do
     fi
 
     # Step 2: Evaluate nucleotide diversity for the window
-    PICA_OUTPUT=$(python3 "$SCRIPT_PATH" "$tmp_sim" -t "$THRESHOLD" -l "$LENGTH" -r "$R_VALUE" 2>&1 | tr '\n' ' ' | sed 's/  */ /g' | sed 's/ *$//')
+    if ! PICA_RAW=$(python3 "$SCRIPT_PATH" "$tmp_sim" -t "$THRESHOLD" -l "$LENGTH" -r "$R_VALUE" 2>&1); then
+        echo "Error: pica2.py failed for region $REGION" >&2
+        echo "$PICA_RAW" >&2
+        continue
+    fi
+
+    PICA_OUTPUT=$(echo "$PICA_RAW" | tr '\n' ' ' | sed 's/  */ /g' | sed 's/ *$//')
 
     echo -e "${REGION}\t${LENGTH}\t${THRESHOLD}\t${R_VALUE}\t${PICA_OUTPUT}"
 
