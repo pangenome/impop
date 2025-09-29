@@ -1,6 +1,6 @@
 <img src="img/impop1.png" alt="implicit pangenome diagram" align="right" width="220" />
 
-population genomics tools for implicit pangenomes
+# Population Genomics Tools for Implicit Pangenomes
 
 Software required:
 - [agc](https://github.com/refresh-bio/agc)
