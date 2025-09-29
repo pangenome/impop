@@ -42,9 +42,9 @@ impg similarity -p ../data/hprc465vschm13.aln.paf.gz -r CHM13#0#chr1:158341439-1
 
 #### run_pica2_impg.sh: multi-window
 
-1. Prepare a BED file with windows:
+1. Prepare a BED file with windows (window size max 10kb as per impg similarity requirements):
 ```
-echo -e "chr1\t158341439\t158341639" | bedtools makewindows -b - -w 200 > ackr1.win.bed
+echo -e "chr1\t158341439\t158341839" | bedtools makewindows -b - -w 200 > ackr1.win.bed
 ```
 
 2. Run the wrapper (recommended `-t 0.999`, `-r 4`):
@@ -60,6 +60,7 @@ Use `-p` and `-s` to override the default PAF and sequence archives, and `-u` to
   -u ../metadata/agc.EUR
 ```
 
-Check `../impop/scripts/run_pica2_impg.sh -h` for the full option list.
+Add `-l <length>` when you need to override the window length passed to `pica2.py` (defaults to the BED interval size).
 
+Check `../impop/scripts/run_pica2_impg.sh -h` for the full option list.
 

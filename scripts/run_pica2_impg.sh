@@ -16,6 +16,8 @@ Usage: $0 -b <bed_file> -t <threshold> -r <r_value> [options]
   -p  PAF file for impg similarity (default: ${PAF_FILE})
   -s  Sequence files for impg similarity (default: ${SEQUENCE_FILES})
   -u  File with assemblies to subset (passed to --subset-sequence-list)
+  -l  Override sequence length passed to pica2.py
+  -o  Write output table to file (default: stdout)
 
   pica2 options:
     -t  Similarity threshold for pica2.py (required)
@@ -30,7 +32,7 @@ USAGE
 }
 
 # Parse command line options
-while getopts "b:t:r:p:s:u:h" opt; do
+while getopts "b:t:r:p:s:u:l:o:h" opt; do
     case $opt in
         b) BED_FILE="$OPTARG" ;;
         t) THRESHOLD="$OPTARG" ;;
@@ -38,6 +40,8 @@ while getopts "b:t:r:p:s:u:h" opt; do
         p) PAF_FILE="$OPTARG" ;;
         s) SEQUENCE_FILES="$OPTARG" ;;
         u) SUBSET_LIST="$OPTARG" ;;
+        l) SEQUENCE_LENGTH="$OPTARG" ;;
+        o) OUTPUT_FILE="$OPTARG" ;;
         h) usage ;;
         *) usage ;;
     esac
@@ -70,6 +74,17 @@ if [ -n "${SUBSET_LIST:-}" ] && [ ! -f "$SUBSET_LIST" ]; then
     exit 1
 fi
 
+if [ -n "${SEQUENCE_LENGTH:-}" ]; then
+    if ! [[ "$SEQUENCE_LENGTH" =~ ^[0-9]+$ ]]; then
+        echo "Error: Sequence length must be a positive integer" >&2
+        exit 1
+    fi
+    if [ "$SEQUENCE_LENGTH" -le 0 ]; then
+        echo "Error: Sequence length must be greater than zero" >&2
+        exit 1
+    fi
+fi
+
 # Validate threshold (float)
 if ! [[ "$THRESHOLD" =~ ^[0-9]*\.?[0-9]+$ ]]; then
     echo "Error: Threshold must be a number (e.g., 0.988)" >&2
@@ -92,7 +107,17 @@ cleanup() {
 trap cleanup EXIT
 
 # Print table header
-echo -e "REGION\tLENGTH\tTHRESHOLD\tR_VALUE\tPICA_OUTPUT"
+if [ -n "${OUTPUT_FILE:-}" ]; then
+    exec > "$OUTPUT_FILE"
+fi
+
+if [ -n "${SUBSET_LIST:-}" ]; then
+    SUBSET_LABEL=$(basename "$SUBSET_LIST")
+    echo -e "REGION\tSUBSET\tLENGTH\tTHRESHOLD\tR_VALUE\tPICA_OUTPUT"
+else
+    SUBSET_LABEL=""
+    echo -e "REGION\tLENGTH\tTHRESHOLD\tR_VALUE\tPICA_OUTPUT"
+fi
 
 # Process each window in the BED file
 while IFS=$'\t' read -r chr start end name; do
@@ -112,6 +137,12 @@ while IFS=$'\t' read -r chr start end name; do
     tmp_sim=$(mktemp tmp.sim.XXXXXX)
     tmpfiles+=("$tmp_sim")
 
+    # Determine length passed to pica2 (override if provided)
+    EFFECTIVE_LENGTH="$LENGTH"
+    if [ -n "${SEQUENCE_LENGTH:-}" ]; then
+        EFFECTIVE_LENGTH="$SEQUENCE_LENGTH"
+    fi
+
     # Build impg command
     impg_cmd=(impg similarity -p "$PAF_FILE" -r "$REGION" --sequence-files "$SEQUENCE_FILES")
     if [ -n "${SUBSET_LIST:-}" ]; then
@@ -121,18 +152,26 @@ while IFS=$'\t' read -r chr start end name; do
     # Step 1: Generate similarity matrix via impg
     if ! "${impg_cmd[@]}" > "$tmp_sim" 2>/dev/null; then
         echo "Error: impg similarity failed for region $REGION" >&2
+        rm -f "$tmp_sim"
         continue
     fi
 
     # Step 2: Evaluate nucleotide diversity for the window
-    if ! PICA_RAW=$(python3 "$SCRIPT_PATH" "$tmp_sim" -t "$THRESHOLD" -l "$LENGTH" -r "$R_VALUE" 2>&1); then
+    if ! PICA_RAW=$(python3 "$SCRIPT_PATH" "$tmp_sim" -t "$THRESHOLD" -l "$EFFECTIVE_LENGTH" -r "$R_VALUE" 2>&1); then
         echo "Error: pica2.py failed for region $REGION" >&2
         echo "$PICA_RAW" >&2
+        rm -f "$tmp_sim"
         continue
     fi
 
     PICA_OUTPUT=$(echo "$PICA_RAW" | tr '\n' ' ' | sed 's/  */ /g' | sed 's/ *$//')
 
-    echo -e "${REGION}\t${LENGTH}\t${THRESHOLD}\t${R_VALUE}\t${PICA_OUTPUT}"
+    if [ -n "${SUBSET_LIST:-}" ]; then
+        echo -e "${REGION}\t${SUBSET_LABEL}\t${EFFECTIVE_LENGTH}\t${THRESHOLD}\t${R_VALUE}\t${PICA_OUTPUT}"
+    else
+        echo -e "${REGION}\t${EFFECTIVE_LENGTH}\t${THRESHOLD}\t${R_VALUE}\t${PICA_OUTPUT}"
+    fi
+
+    rm -f "$tmp_sim"
 
 done < "$BED_FILE"
