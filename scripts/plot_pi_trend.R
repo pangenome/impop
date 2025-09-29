@@ -4,6 +4,9 @@ suppressPackageStartupMessages({
   if (!requireNamespace("ggplot2", quietly = TRUE)) {
     stop("Package 'ggplot2' is required. Please install it with install.packages('ggplot2').", call. = FALSE)
   }
+  if (!requireNamespace("dplyr", quietly = TRUE)) {
+    stop("Package 'dplyr' is required. Please install it with install.packages('dplyr').", call. = FALSE)
+  }
 })
 
 parse_args <- function() {
@@ -12,6 +15,8 @@ parse_args <- function() {
   output <- "pi_trend.png"
   plot_title <- NULL
   dpi <- 150
+  highlights <- character()
+  highlight_bed <- NULL
 
   i <- 1
   while (i <= length(args)) {
@@ -69,6 +74,32 @@ parse_args <- function() {
       next
     }
 
+    if (grepl("^--highlight=", arg)) {
+      highlights <- c(highlights, sub("^--highlight=", "", arg))
+      i <- i + 1
+      next
+    }
+
+    if (arg %in% c("--highlight", "-H")) {
+      if (i == length(args)) stop("--highlight requires a value", call. = FALSE)
+      highlights <- c(highlights, args[[i + 1]])
+      i <- i + 2
+      next
+    }
+
+    if (grepl("^--highlight-bed=", arg)) {
+      highlight_bed <- sub("^--highlight-bed=", "", arg)
+      i <- i + 1
+      next
+    }
+
+    if (arg == "--highlight-bed") {
+      if (i == length(args)) stop("--highlight-bed requires a value", call. = FALSE)
+      highlight_bed <- args[[i + 1]]
+      i <- i + 2
+      next
+    }
+
     stop(sprintf("Unknown argument: %s", arg), call. = FALSE)
   }
 
@@ -76,7 +107,14 @@ parse_args <- function() {
     stop("At least one --input specification is required", call. = FALSE)
   }
 
-  list(inputs = inputs, output = output, title = plot_title, dpi = dpi)
+  list(
+    inputs = inputs,
+    output = output,
+    title = plot_title,
+    dpi = dpi,
+    highlights = highlights,
+    highlight_bed = highlight_bed
+  )
 }
 
 parse_input_spec <- function(spec) {
@@ -92,6 +130,38 @@ parse_input_spec <- function(spec) {
     return(list(label = label, path = path))
   }
   list(label = NULL, path = spec)
+}
+
+parse_highlight_spec <- function(spec) {
+  pattern <- "^([^:]+):(\\d+)-(\\d+)$"
+  m <- regexec(pattern, spec)
+  res <- regmatches(spec, m)[[1]]
+  if (length(res) != 4) {
+    stop(sprintf("Invalid highlight specification '%s'. Use chrom:start-end", spec), call. = FALSE)
+  }
+  data.frame(
+    chrom = res[2],
+    start = as.numeric(res[3]),
+    end = as.numeric(res[4]),
+    stringsAsFactors = FALSE
+  )
+}
+
+read_highlight_bed <- function(path) {
+  if (!file.exists(path)) {
+    stop(sprintf("Highlight BED file not found: %s", path), call. = FALSE)
+  }
+
+  bed <- utils::read.table(path, header = FALSE, sep = "\t", stringsAsFactors = FALSE, comment.char = "")
+  if (ncol(bed) < 3) {
+    stop("Highlight BED file must have at least three columns (chrom, start, end)", call. = FALSE)
+  }
+
+  bed <- bed[, 1:3]
+  colnames(bed) <- c("chrom", "start", "end")
+  bed$start <- as.numeric(bed$start)
+  bed$end <- as.numeric(bed$end)
+  bed
 }
 
 read_pi_table <- function(path, label_override = NULL) {
@@ -144,7 +214,9 @@ chrom_sort_key <- function(chrom) {
 }
 
 compute_offsets <- function(df, gap = 5e5) {
-  chrom_order <- df |> dplyr::distinct(chrom) |> dplyr::mutate(order_key = chrom_sort_key(chrom)) |
+  chrom_order <- df |>
+    dplyr::distinct(chrom) |>
+    dplyr::mutate(order_key = chrom_sort_key(chrom)) |>
     dplyr::arrange(order_key)
 
   chrom_max <- df |> dplyr::group_by(chrom) |> dplyr::summarise(chrom_end = max(end), .groups = "drop")
@@ -162,25 +234,66 @@ compute_offsets <- function(df, gap = 5e5) {
   chrom_order
 }
 
-plot_pi_trend <- function(df, output, title = NULL, dpi = 150) {
+plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL) {
   df <- df |> dplyr::arrange(factor(chrom, levels = unique(chrom)))
 
   chrom_offsets <- compute_offsets(df)
   df <- dplyr::left_join(df, chrom_offsets[, c("chrom", "offset")], by = "chrom")
   df$genome_pos <- df$midpoint + df$offset
 
-  centers <- df |> dplyr::group_by(chrom) |> dplyr::summarise(center = mean(genome_pos), .groups = "drop") |
-    dplyr::arrange(chrom_sort_key(chrom))
+  pop_levels <- unique(df$label)
+  base_cols <- c("#640D5F", "#B12C00", "#EB5B00", "#FFCC00")
+  if (length(pop_levels) <= length(base_cols)) {
+    colour_values <- base_cols[seq_along(pop_levels)]
+  } else {
+    extra_needed <- length(pop_levels) - length(base_cols)
+    extra_cols <- grDevices::hcl.colors(extra_needed, palette = "Dark3")
+    colour_values <- c(base_cols, extra_cols)
+  }
+  names(colour_values) <- pop_levels
+  df$label <- factor(df$label, levels = pop_levels)
+
+  centers <- df |>
+    dplyr::group_by(chrom) |>
+    dplyr::summarise(center = mean(genome_pos), .groups = "drop") |>
+    dplyr::mutate(order_key = chrom_sort_key(chrom)) |>
+    dplyr::arrange(order_key)
 
   vlines <- chrom_offsets$offset
   vlines <- vlines[vlines != 0]
 
-  plt <- ggplot2::ggplot(df, ggplot2::aes(x = genome_pos, y = pi, colour = label)) +
+  highlight_df <- NULL
+  if (!is.null(highlights) && nrow(highlights) > 0) {
+    highlight_df <- highlights |>
+      dplyr::left_join(chrom_offsets[, c("chrom", "offset")], by = "chrom") |>
+      dplyr::filter(!is.na(offset)) |>
+      dplyr::mutate(
+        xmin = start + offset,
+        xmax = end + offset,
+        ymin = -Inf,
+        ymax = Inf
+      )
+  }
+
+  plt <- ggplot2::ggplot(df, ggplot2::aes(x = genome_pos, y = pi, colour = label))
+
+  if (!is.null(highlight_df) && nrow(highlight_df) > 0) {
+    plt <- plt + ggplot2::geom_rect(
+      data = highlight_df,
+      inherit.aes = FALSE,
+      ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+      fill = "gold",
+      alpha = 0.2
+    )
+  }
+
+  plt <- plt +
     ggplot2::geom_line(linewidth = 0.6) +
     ggplot2::geom_point(size = 1.2) +
     ggplot2::theme_minimal(base_size = 12) +
     ggplot2::labs(x = "Genomic position (window midpoint)", y = expression(pi), colour = "Population") +
     ggplot2::scale_x_continuous(breaks = centers$center, labels = centers$chrom) +
+    ggplot2::scale_colour_manual(values = colour_values) +
     ggplot2::guides(colour = ggplot2::guide_legend(title = "Population")) +
     ggplot2::theme(panel.grid.major.x = ggplot2::element_blank(), panel.grid.minor.x = ggplot2::element_blank())
 
@@ -203,7 +316,21 @@ main <- function() {
   tables <- lapply(specs, function(spec) read_pi_table(spec$path, spec$label))
   combined <- dplyr::bind_rows(tables)
 
-  plot_pi_trend(combined, opts$output, opts$title, opts$dpi)
+  highlight_df <- NULL
+  if (length(opts$highlights) > 0) {
+    highlight_df <- do.call(rbind, lapply(opts$highlights, parse_highlight_spec))
+  }
+
+  if (!is.null(opts$highlight_bed)) {
+    bed_regions <- read_highlight_bed(opts$highlight_bed)
+    if (is.null(highlight_df)) {
+      highlight_df <- bed_regions
+    } else {
+      highlight_df <- rbind(highlight_df, bed_regions)
+    }
+  }
+
+  plot_pi_trend(combined, opts$output, opts$title, opts$dpi, highlight_df)
 }
 
 if (identical(environment(), globalenv())) {
