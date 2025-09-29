@@ -13,10 +13,10 @@ odgi similarity -i tmp.gfa > tmp.sim
 
 3. evaluate nucleotide diversity in the window 
 ```
-python3 ../scr/pica2.2.py  tmp.sim  -t .988  -l 200 -r 5
+python3 scripts/pica2.py tmp.sim -t 0.988 -l 200 -r 5
 ```
 
-###### wrap_pica2_impg_odgi.sh: multi-window   
+###### run_pica2_odgi.sh: multi-window   
 0. make a bed file for windows 
 ```
 echo -e "chr1\t158340000\t158344000" | bedtools  makewindows -b - -w 200   > ackr1.win.bed
@@ -24,5 +24,5 @@ echo -e "chr1\t158340000\t158344000" | bedtools  makewindows -b - -w 200   > ack
 
 1. run the wrap (reccomended t 0.999, r 4 )
 ```
-../impop/scr/wrap_pica2_impg_odgi.sh -b ackr1.win.bed  -t 0.999 -r 4
+../impop/scripts/run_pica2_odgi.sh -b ackr1.win.bed  -t 0.999 -r 4
 ```

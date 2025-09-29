@@ -10,29 +10,34 @@ SCRIPT_PATH="${SCRIPT_DIR}/pica2.py"
 
 # Display usage information
 usage() {
-    echo "Usage: $0 -b <bed_file> -t <threshold> -r <r_value> [options]"
-    echo "  -b  BED file containing regions (required)"
-    echo "  -p  PAF file for impg similarity (default: $PAF_FILE)"
-    echo "  -s  Sequence files for impg similarity (default: $SEQUENCE_FILES)"
-    echo ""
-    echo "  pica2 options:"
-    echo "    -t  Similarity threshold for pica2.2.py (required)"
-    echo "    -r  R value for pica2.2.py (required)"
-    echo ""
-    echo "  -h  Display this help message"
-    echo ""
-    echo "Example: $0 -b ackr1_win.bed -t 0.988 -r 5"
+    cat <<USAGE
+Usage: $0 -b <bed_file> -t <threshold> -r <r_value> [options]
+  -b  BED file containing regions (required)
+  -p  PAF file for impg similarity (default: ${PAF_FILE})
+  -s  Sequence files for impg similarity (default: ${SEQUENCE_FILES})
+  -u  File with assemblies to subset (passed to --subset-sequence-list)
+
+  pica2 options:
+    -t  Similarity threshold for pica2.py (required)
+    -r  R value for pica2.py (required)
+
+  -h  Display this help message
+
+Example:
+  $0 -b ackr1.win.bed -t 0.999 -r 4 -u ../metadata/agc.EUR
+USAGE
     exit 1
 }
 
 # Parse command line options
-while getopts "b:t:r:p:s:h" opt; do
+while getopts "b:t:r:p:s:u:h" opt; do
     case $opt in
         b) BED_FILE="$OPTARG" ;;
         t) THRESHOLD="$OPTARG" ;;
         r) R_VALUE="$OPTARG" ;;
         p) PAF_FILE="$OPTARG" ;;
         s) SEQUENCE_FILES="$OPTARG" ;;
+        u) SUBSET_LIST="$OPTARG" ;;
         h) usage ;;
         *) usage ;;
     esac
@@ -40,37 +45,40 @@ done
 
 # Ensure required arguments are present
 if [ -z "${BED_FILE:-}" ] || [ -z "${THRESHOLD:-}" ] || [ -z "${R_VALUE:-}" ]; then
-    echo "Error: Missing required arguments"
+    echo "Error: Missing required arguments" >&2
     usage
 fi
 
-# Validate BED file exists
+# Validate files
 if [ ! -f "$BED_FILE" ]; then
-    echo "Error: BED file '$BED_FILE' not found"
+    echo "Error: BED file '$BED_FILE' not found" >&2
     exit 1
 fi
 
-# Validate PAF file exists
 if [ ! -f "$PAF_FILE" ]; then
-    echo "Error: PAF file '$PAF_FILE' not found"
+    echo "Error: PAF file '$PAF_FILE' not found" >&2
     exit 1
 fi
 
-# Validate sequence files exist
 if [ ! -f "$SEQUENCE_FILES" ]; then
-    echo "Error: Sequence file '$SEQUENCE_FILES' not found"
+    echo "Error: Sequence file '$SEQUENCE_FILES' not found" >&2
+    exit 1
+fi
+
+if [ -n "${SUBSET_LIST:-}" ] && [ ! -f "$SUBSET_LIST" ]; then
+    echo "Error: Subset list '$SUBSET_LIST' not found" >&2
     exit 1
 fi
 
 # Validate threshold (float)
 if ! [[ "$THRESHOLD" =~ ^[0-9]*\.?[0-9]+$ ]]; then
-    echo "Error: Threshold must be a number (e.g., 0.988)"
+    echo "Error: Threshold must be a number (e.g., 0.988)" >&2
     exit 1
 fi
 
 # Validate R value (integer)
 if ! [[ "$R_VALUE" =~ ^[0-9]+$ ]]; then
-    echo "Error: R value must be an integer (e.g., 5)"
+    echo "Error: R value must be an integer (e.g., 5)" >&2
     exit 1
 fi
 
@@ -104,8 +112,14 @@ while IFS=$'\t' read -r chr start end name; do
     tmp_sim=$(mktemp tmp.sim.XXXXXX)
     tmpfiles+=("$tmp_sim")
 
-    # Step 1: Generate similarity matrix directly via impg
-    if ! impg similarity -p "$PAF_FILE" -r "$REGION" --sequence-files "$SEQUENCE_FILES" > "$tmp_sim" 2>/dev/null; then
+    # Build impg command
+    impg_cmd=(impg similarity -p "$PAF_FILE" -r "$REGION" --sequence-files "$SEQUENCE_FILES")
+    if [ -n "${SUBSET_LIST:-}" ]; then
+        impg_cmd+=(--subset-sequence-list "$SUBSET_LIST")
+    fi
+
+    # Step 1: Generate similarity matrix via impg
+    if ! "${impg_cmd[@]}" > "$tmp_sim" 2>/dev/null; then
         echo "Error: impg similarity failed for region $REGION" >&2
         continue
     fi

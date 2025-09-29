@@ -19,7 +19,7 @@ Evaluate nucleotide diversity in the ACKR1 (DARC) gene region (chr1:158,340,000-
 
 ### impg similarity + pica2.py
 
-###### One window
+#### One window
 
 1. Generate the similarity matrix (requires impg support for AGC archives; adjust paths as needed):
 ```
@@ -31,7 +31,16 @@ impg similarity -p hprc465vschm13.aln.paf.gz -r CHM13#0#chr1:158341439-158341639
 python3 scripts/pica2.py tmp.sim -t 0.988 -l 200 -r 5
 ```
 
-###### wrap_pica2_impg.sh: multi-window
+
+#### One window with subsetting sequences
+
+Generate the similarity matrix from a subset of assemblies:
+```
+impg similarity -p ../data/hprc465vschm13.aln.paf.gz -r CHM13#0#chr1:158341439-158341639 --sequence-files ../data/HPRC_r2_assemblies_0.6.1.agc --subset-sequence-list ../metadata/agc.EUR > EUR.sim
+```
+
+
+#### run_pica2_impg.sh: multi-window
 
 1. Prepare a BED file with windows:
 ```
@@ -40,21 +49,17 @@ echo -e "chr1\t158341439\t158341639" | bedtools makewindows -b - -w 200 > ackr1.
 
 2. Run the wrapper (recommended `-t 0.999`, `-r 4`):
 ```
-../impop/scripts/wrap_pica2_impg.sh -b ackr1.win.bed -t 0.999 -r 4
+../impop/scripts/run_pica2_impg.sh -b ackr1.win.bed -t 0.999 -r 4
 ```
 
-Use `-p` and `-s` to override the default PAF and sequence archives when needed:
+Use `-p` and `-s` to override the default PAF and sequence archives, and `-u` to restrict to assemblies listed in a plain-text file (one assembly name per line):
 ```
-../impop/scripts/wrap_pica2_impg.sh -b ackr1.win.bed -t 0.999 -r 4 \
+../impop/scripts/run_pica2_impg.sh -b ackr1.win.bed -t 0.999 -r 4 \
   -p ../data/hprc465vschm13.aln.paf.gz \
-  -s ../data/HPRC_r2_assemblies_0.6.1.agc
+  -s ../data/HPRC_r2_assemblies_0.6.1.agc \
+  -u ../metadata/agc.EUR
 ```
 
-Check `../impop/scripts/wrap_pica2_impg.sh -h` for the full option list.
+Check `../impop/scripts/run_pica2_impg.sh -h` for the full option list.
 
-###### One window with subsetting sequences
 
-Generate the similarity matrix from a subset of assemblies:
-```
-impg similarity -p ../data/hprc465vschm13.aln.paf.gz -r CHM13#0#chr1:158341439-158341639 --sequence-files ../data/HPRC_r2_assemblies_0.6.1.agc --subset-sequence-list ../metadata/agc.EUR > EUR.sim
-```
