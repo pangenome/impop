@@ -257,7 +257,9 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
     dplyr::group_by(chrom) |>
     dplyr::summarise(center = mean(genome_pos), .groups = "drop") |>
     dplyr::mutate(order_key = chrom_sort_key(chrom)) |>
-    dplyr::arrange(order_key)
+    dplyr::arrange(order_key) |>
+    dplyr::left_join(chrom_offsets[, c("chrom", "offset")], by = "chrom") |>
+    dplyr::mutate(label = sprintf("%s\n%.1f Mb", chrom, (center - offset) / 1e6))
 
   vlines <- chrom_offsets$offset
   vlines <- vlines[vlines != 0]
@@ -287,15 +289,40 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
     )
   }
 
+  label_df <- NULL
+  if (!is.null(highlight_df) && nrow(highlight_df) > 0) {
+    ymax <- max(df$pi, na.rm = TRUE)
+    label_df <- highlight_df |>
+      dplyr::mutate(
+        label = sprintf("%s:%.2f-%.2f Mb", chrom, start / 1e6, end / 1e6),
+        x = (xmin + xmax) / 2,
+        y = ymax * 1.05
+      )
+    plt <- plt + ggplot2::expand_limits(y = max(label_df$y, ymax, na.rm = TRUE))
+  }
+
   plt <- plt +
     ggplot2::geom_line(linewidth = 0.6) +
     ggplot2::geom_point(size = 1.2) +
     ggplot2::theme_minimal(base_size = 12) +
     ggplot2::labs(x = "Genomic position (window midpoint)", y = expression(pi), colour = "Population") +
-    ggplot2::scale_x_continuous(breaks = centers$center, labels = centers$chrom) +
+    ggplot2::scale_x_continuous(breaks = centers$center, labels = centers$label) +
     ggplot2::scale_colour_manual(values = colour_values) +
     ggplot2::guides(colour = ggplot2::guide_legend(title = "Population")) +
     ggplot2::theme(panel.grid.major.x = ggplot2::element_blank(), panel.grid.minor.x = ggplot2::element_blank())
+
+  if (!is.null(label_df) && nrow(label_df) > 0) {
+    plt <- plt +
+      ggplot2::geom_text(
+        data = label_df,
+        inherit.aes = FALSE,
+        ggplot2::aes(x = x, y = y, label = label),
+        colour = "grey20",
+        size = 3,
+        angle = 90,
+        vjust = -0.2
+      )
+  }
 
   if (length(vlines) > 0) {
     plt <- plt + ggplot2::geom_vline(xintercept = vlines, colour = "grey70", linetype = "dashed", linewidth = 0.3)
