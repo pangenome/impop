@@ -25,9 +25,8 @@ $$\hat{\pi} = \frac{n}{n-1} \sum_{ij} x_i x_j \pi_{ij} = \frac{n}{n-1} \sum_{i=2
 ### Hudson's Fst 
 
 Measure of genetic differentiation between populations, comparing average diversity within and between them [wiki](https://en.wikipedia.org/wiki/Fixation_index):
-$$
-F_{ST} = \frac{\pi_{between} - \pi_{within}}{\pi_{between}}
-$$
+
+$$F_{ST} = \frac{\pi_{between} - \pi_{within}}{\pi_{between}}$$
 
 > Hudson, R. R.; Slatkin, M.; Maddison, W. P. (1992). "Estimation of levels of gene flow from DNA sequence data." *Genetics*. **132** (2): 583–589.
 
