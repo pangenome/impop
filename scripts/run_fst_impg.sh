@@ -137,9 +137,8 @@ fi
 mkdir -p "$LOG_DIR"
 
 # Track temporary files for cleanup
-trap 'for f in "${tmpfiles[@]:-}"; do [ -f "$f" ] && rm -f "$f"; done' EXIT
-
 declare -a tmpfiles=()
+trap 'for f in "${tmpfiles[@]:-}"; do [ -f "$f" ] && rm -f "$f"; done' EXIT
 
 # Build union list (subset C)
 UNION_LIST=$(mktemp tmp.union.XXXXXX)
@@ -150,10 +149,6 @@ if [ ! -s "$UNION_LIST" ]; then
     echo "Error: Union subset list is empty" >&2
     exit 1
 fi
-
-SUBSET_A_LABEL=$(basename "$SUBSET_A_LIST")
-SUBSET_B_LABEL=$(basename "$SUBSET_B_LIST")
-SUBSET_C_LABEL=$(basename "$SUBSET_A_LIST")"+"$(basename "$SUBSET_B_LIST")
 
 # Redirect output if requested
 if [ -n "$OUTPUT_FILE" ]; then

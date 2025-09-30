@@ -6,8 +6,13 @@ Software required:
 - [agc](https://github.com/refresh-bio/agc)
 - [impg](https://github.com/pangenome/impg)
 - [odgi](https://github.com/pangenome/odgi)
+- [povu]()
+
 
 [Dataset info](doc/hprc.datameta.info)
+
+
+
 
 ### Nucleotide diversity
 
@@ -19,7 +24,11 @@ $$\hat{\pi} = \frac{n}{n-1} \sum_{ij} x_i x_j \pi_{ij} = \frac{n}{n-1} \sum_{i=2
 
 #### [How was pi calculated?](doc/nucleotide_dievrsity.md)
 
+### Hudson's Fst 
 
+Hudson, Richard R., Montgomery Slatkin, and Wayne P. Maddison. "Estimation of levels of gene flow from DNA sequence data." Genetics 132.2 (1992): 583-589.
+
+Voight, Benjamin F., et al. "A map of recent positive selection in the human genome." PLoS biology 4.3 (2006): e72.
 
 ##### Example
 
