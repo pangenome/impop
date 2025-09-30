@@ -6,12 +6,10 @@ Software required:
 - [agc](https://github.com/refresh-bio/agc)
 - [impg](https://github.com/pangenome/impg)
 - [odgi](https://github.com/pangenome/odgi)
-- [povu]()
+- [povu](https://github.com/pangenome/povu)
 
 
-[Dataset info](doc/hprc.datameta.info)
-
-
+[Dataset info](doc/where_hprc_data.md)
 
 
 ### Nucleotide diversity
@@ -22,13 +20,15 @@ $$\hat{\pi} = \frac{n}{n-1} \sum_{ij} x_i x_j \pi_{ij} = \frac{n}{n-1} \sum_{i=2
 
 >> Nei, M.; Li, W.-H. (1979). "Mathematical Model for Studying Genetic Variation in Terms of Restriction Endonucleases". *Proceedings of the National Academy of Sciences*. **76** (10): 5269–5273. doi:[10.1073/pnas.76.10.5269](https://doi.org/10.1073/pnas.76.10.5269). PMC [413122](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC413122). PMID [291943](https://pubmed.ncbi.nlm.nih.gov/291943/).
 
-#### [How was pi calculated?](doc/nucleotide_dievrsity.md)
+#### [How was pi calculated?](doc/how_pi.md)
 
 ### Hudson's Fst 
 
 Hudson, Richard R., Montgomery Slatkin, and Wayne P. Maddison. "Estimation of levels of gene flow from DNA sequence data." Genetics 132.2 (1992): 583-589.
 
 Voight, Benjamin F., et al. "A map of recent positive selection in the human genome." PLoS biology 4.3 (2006): e72.
+
+#### [How was Fst calculated?](doc/how_fst.md)
 
 ##### Example
 

@@ -87,10 +87,7 @@ Rscript scripts/plot_pi_trend.R \
 
 
 
-
-
-
-## impg query + odgi similarity + pica2.py
+### impg query + odgi similarity + pica2.py
 
 ###### one window 
 1.query the gfa to extract a window:
