@@ -305,6 +305,12 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
     ggplot2::geom_line(linewidth = 0.6) +
     ggplot2::geom_point(size = 1.2) +
     ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme(
+      plot.background = ggplot2::element_rect(fill = "white", colour = NA),
+      panel.background = ggplot2::element_rect(fill = "white", colour = NA),
+      legend.background = ggplot2::element_rect(fill = "white", colour = NA),
+      legend.key = ggplot2::element_rect(fill = "white", colour = NA)
+    ) +
     ggplot2::labs(x = "Genomic position (window midpoint)", y = expression(pi), colour = "Population") +
     ggplot2::scale_x_continuous(breaks = centers$center, labels = centers$label) +
     ggplot2::scale_colour_manual(values = colour_values) +
