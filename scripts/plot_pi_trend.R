@@ -242,7 +242,7 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
   df$genome_pos <- df$midpoint + df$offset
 
   pop_levels <- unique(df$label)
-  base_cols <- c("#640D5F", "#B12C00", "#EB5B00", "#FFCC00")
+  base_cols <- c("#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93")
   if (length(pop_levels) <= length(base_cols)) {
     colour_values <- base_cols[seq_along(pop_levels)]
   } else {
