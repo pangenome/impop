@@ -20,7 +20,7 @@ $$\hat{\pi} = \frac{n}{n-1} \sum_{ij} x_i x_j \pi_{ij} = \frac{n}{n-1} \sum_{i=2
 
 > Nei, M.; Li, W.-H. (1979). "Mathematical Model for Studying Genetic Variation in Terms of Restriction Endonucleases". *Proceedings of the National Academy of Sciences*. **76** (10): 5269–5273. doi:[10.1073/pnas.76.10.5269](https://doi.org/10.1073/pnas.76.10.5269). PMC [413122](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC413122). PMID [291943](https://pubmed.ncbi.nlm.nih.gov/291943/).
 
-#### [How was pi calculated?](doc/how_pi.md)
+#### [How to evaluate pi?](doc/how_pi.md)
 
 ### Hudson's Fst 
 
@@ -31,7 +31,7 @@ $$F_{ST} = \frac{\pi_{between} - \pi_{within}}{\pi_{between}}$$
 > Hudson, R. R.; Slatkin, M.; Maddison, W. P. (1992). "Estimation of levels of gene flow from DNA sequence data." *Genetics*. **132** (2): 583–589.
 
 
-#### [How was Fst calculated?](doc/how_fst.md)
+#### [How to evaluate Fst?](doc/how_fst.md)
 
 ##### Example
 
