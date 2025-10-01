@@ -26,7 +26,20 @@ $$F_{ST} = \frac{\pi_{between} - \pi_{within}}{\pi_{between}}$$
 > Hudson, R. R.; Slatkin, M.; Maddison, W. P. (1992). "Estimation of levels of gene flow from DNA sequence data." *Genetics*. **132** (2): 583–589.
 
 
-#### [How to evaluate Fst?](doc/how_fst.md)
+#### [How to evaluate Fst?](doc/how_tjd.md)
+
+### Tajima's D 
+
+Test statistic comparing two estimates of genetic variation: the average pairwise nucleotide diversity (π) and the number of segregating sites (S). It detects departures from the neutral mutation–drift equilibrium, such as population expansion, bottlenecks, or selection [wiki](https://en.wikipedia.org/wiki/Tajima%27s_D):
+
+$$D = \frac{\pi - S/a_1}{\sqrt{e_1 S + e_2 S (S - 1)}}$$
+
+**Interpretation**:  
+- **D ≈ 0** → Consistent with neutral evolution and constant population size.  
+- **D < 0** → Excess of low-frequency polymorphisms, suggesting population expansion or purifying selection.  
+- **D > 0** → Excess of intermediate-frequency polymorphisms, suggesting balancing selection or a recent population bottleneck.  
+
+> Tajima, F. (1989). *Statistical method for testing the neutral mutation hypothesis by DNA polymorphism.* Genetics, **123**(3), 585–595.  [Link to article (Genetics, 1989)](https://www.genetics.org/content/123/3/585)
 
 ##### Example
 
@@ -50,3 +63,32 @@ Key SNP: rs2814778 (T-42C) defines the FY\*O (also known as Duffy null) in the G
 
 
 
+
+### Tajima's D per window
+
+Use `scripts/run_tajd.sh` to compute segregating sites (S), nucleotide diversity (π), sample count (n), and Tajima's D for each BED window by combining `impg query`, `odgi`, `povu gfa2vcf`, `impg similarity`, `scripts/pica2.py`, and `scripts/tj_d.py`.
+
+Required inputs:
+- `-b` BED file with windows
+- `-l` sample list (one sequence ID per line) used as the subset for all analyses
+
+Common options:
+- `-p` PAF alignment (`impg query/similarity`)
+- `-s` AGC archive of assemblies
+- `-t` / `-r` parameters forwarded to `scripts/pica2.py`
+- `-P` region prefix (default `CHM13#0#`) and `-R` reference name passed to `povu`
+- `-o` output TSV path (defaults to stdout)
+
+Example:
+```
+scripts/run_tajd.sh \
+  -b darc.bed \
+  -l ../../metadata/all.agc \
+  -p ../../data/hprc465vschm13.aln.paf.gz \
+  -s ../../data/HPRC_r2_assemblies_0.6.1.agc \
+  -t 0.999 \
+  -r 5 \
+  -o darc.tajd.tsv
+```
+
+The resulting table reports `REGION`, window `LENGTH`, number of `SAMPLES`, segregating sites (`SEGREGATING_SITES`), window-wide `PI`, and `TAJIMAS_D` (with zero-S windows yielding `NA`).
