@@ -94,3 +94,29 @@ head ../../metadata/agc.AFR
 4. Inspect the output table (`REGION`, `LENGTH`, `THRESHOLD`, `R_VALUE`, `PI_A`, `PI_B`, `PI_C`, `PI_AB_AVG`, `FST`). The script reports `NA` for `FST` when `piC` is zero and writes detailed `pica2.py` logs to `pica2_logs/` (override with `-d`).
 
 Use `-P` to provide a different region prefix, and run `scripts/run_fst_impg.sh -h` for the full option list.
+
+### Plotting Fst trends
+
+Use `scripts/plot_fst_trend.R` to visualise windowed Fst estimates produced by `scripts/run_fst_impg.sh`.
+
+Dependencies:
+- R (tested with ≥ 4.2)
+- R packages `ggplot2` and `dplyr`
+
+The script expects tab-delimited inputs with `REGION` and `FST` columns. Provide each table with `--input`, optionally giving it a label (`--input AFRvEUR=results/darc.fst.tsv`). When no label is supplied the script derives one from the file name.
+
+Common options mirror `plot_pi_trend.R`:
+- `--output` path for the plot (default `fst_trend.png`)
+- `--title` custom plot title
+- `--dpi` image resolution (default 150)
+- `--highlight chrom:start-end` to shade specific intervals (repeatable)
+- `--highlight-bed file.bed` to add intervals from a BED file
+
+Example:
+```
+Rscript scripts/plot_fst_trend.R \
+  --input AFRvEUR=results/darc.fst.tsv \
+  --title "ACKR1 Fst" \
+  --highlight chr1:158291925-158292425 \
+  --output ackr1_fst_trend.png
+```

@@ -2,12 +2,7 @@
 
 # Population Genomics Tools for Implicit Pangenomes
 
-Software required:
-- [agc](https://github.com/refresh-bio/agc)
-- [impg](https://github.com/pangenome/impg)
-- [odgi](https://github.com/pangenome/odgi)
-- [povu](https://github.com/pangenome/povu)
-
+Software required: [agc](https://github.com/refresh-bio/agc), [impg](https://github.com/pangenome/impg), [odgi](https://github.com/pangenome/odgi), [povu](https://github.com/pangenome/povu)
 
 [Dataset info](doc/where_hprc_data.md)
 
@@ -35,7 +30,7 @@ $$F_{ST} = \frac{\pi_{between} - \pi_{within}}{\pi_{between}}$$
 
 ##### Example
 
-The Duffy antigen locus (DARC) represents one of the most striking examples of natural selection in human evolution, driven by malaria resistance. Three major allelic variants exist: FYB (ancestral), FYA (common in Asia and Europe), and FYO (Duffy null, fixed in sub-Saharan Africa). The FYO allele, characterized by a promoter mutation that prevents DARC expression on red blood cells, provides near-complete protection against Plasmodium vivax malaria and has undergone one of the strongest selective sweeps in the human genome with a selection coefficient of 0.043. This ancient selective event began approximately 42,000 years ago from standing variation at very low frequency (0.1\%), rather than from a new mutation, and swept to near-fixation throughout equatorial Africa where P. vivax posed the greatest threat. The extreme geographic differentiation of these alleles - with FY\*O at >99% frequency in most sub-Saharan populations but virtually absent elsewhere - combined with signatures of reduced diversity and extended haplotype homozygosity, demonstrates how pathogen pressure has profoundly shaped human genetic variation. Interestingly, despite being a textbook example of positive selection, the complex evolutionary history of this locus, involving selection on standing variation rather than a simple hard sweep, means it is often missed by standard genome-wide selection scans.
+The Duffy antigen locus (*ACKR1* aka *DARC*) represents one of the most striking examples of natural selection in human evolution, driven by malaria resistance. Three major allelic variants exist: FYB (ancestral), FYA (common in Asia and Europe), and FYO (Duffy null, fixed in sub-Saharan Africa). The FYO allele, characterized by a promoter mutation that prevents DARC expression on red blood cells, provides near-complete protection against Plasmodium vivax malaria and has undergone one of the strongest selective sweeps in the human genome with a selection coefficient of 0.043. This ancient selective event began approximately 42,000 years ago from standing variation at very low frequency (0.1\%), rather than from a new mutation, and swept to near-fixation throughout equatorial Africa where P. vivax posed the greatest threat. The extreme geographic differentiation of these alleles - with FY\*O at >99% frequency in most sub-Saharan populations but virtually absent elsewhere - combined with signatures of reduced diversity and extended haplotype homozygosity, demonstrates how pathogen pressure has profoundly shaped human genetic variation. Interestingly, despite being a textbook example of positive selection, the complex evolutionary history of this locus, involving selection on standing variation rather than a simple hard sweep, means it is often missed by standard genome-wide selection scans.
 
 > McManus, K. F.; et al. (2017). "Population genetic analysis of the DARC locus (Duffy) reveals adaptation from standing variation associated with malaria resistance in humans." *PLoS Genetics*. **13** (3): e1006560. doi:[10.1371/journal.pgen.1006560](https://doi.org/10.1371/journal.pgen.1006560).
 
@@ -44,25 +39,7 @@ The Duffy antigen locus (DARC) represents one of the most striking examples of n
 
 Evaluate nucleotide diversity in the ACKR1 gene region (chr1:158,340,000-158,344,000) in windows of 200 bp. Use the HPRCv2 assembly; coordinates are relative to CHM13.
 
-Key SNP: rs2814778 located within this interval
-
-This spans the ACKR1 coding sequence plus regulatory regions implicated in the selective sweep.
-
-
-FY\*O (also known as Duffy null) is defined by a mutation (T-42C, rs2814778) in the GATA-1 transcription factor binding site in the DARC gene promoter region,
-
-
-**hg38** Human: Common (1000 Genomes Phase 3 MAF >= 1%) Short Genetic Variants from dbSNP Release 155 (rs2814778)
-dbSNP: rs2814778 Position: chr1:159204893-159204893
-chr1:159,179,893-159,229,893 (50kb interval surrounding rs2814778)
-chr1:159,154,893-159,254,893 (100kb interval surrounding rs2814778)
-chr1:159,104,893-159,304,893 (200kb interval surrounding rs2814778)
-
-**CHM13**
-chr1:158341919-158341919 rs2814778
-chr1:158316925-158366917 (50kb interval surrounding rs2814778)
-chr1:158291925-158391926 (100kb interval surrounding rs2814778)
-chr1:158241938-158441927 (200kb interval surrounding rs2814778)
+Key SNP: rs2814778 (T-42C) defines the FY\*O (also known as Duffy null) in the GATA-1 transcription factor binding site in the *ACKR1* gene promoter region. 
 
 | Interval | **hg38** | **CHM13** |
 |----------|----------|-----------|
