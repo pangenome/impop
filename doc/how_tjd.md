@@ -76,3 +76,35 @@ echo -e "chr1\t158341439\t158341839" | bedtools makewindows -b - -w 200 > region
 ```
 
 The output table reports, per window, the observed segregating sites (S), mean pairwise diversity (π), sample count (n), and Tajima's D.
+
+
+
+
+### Tajima's D per window
+
+Use `scripts/run_tajd.sh` to compute segregating sites (S), nucleotide diversity (π), sample count (n), and Tajima's D for each BED window by combining `impg query`, `odgi`, `povu gfa2vcf`, `impg similarity`, `scripts/pica2.py`, and `scripts/tj_d.py`.
+
+Required inputs:
+- `-b` BED file with windows
+- `-l` sample list (one sequence ID per line) used as the subset for all analyses
+
+Common options:
+- `-p` PAF alignment (`impg query/similarity`)
+- `-s` AGC archive of assemblies
+- `-t` / `-r` parameters forwarded to `scripts/pica2.py`
+- `-P` region prefix (default `CHM13#0#`) and `-R` reference name passed to `povu`
+- `-o` output TSV path (defaults to stdout)
+
+Example:
+```
+scripts/run_tajd.sh \
+  -b darc.bed \
+  -l ../../metadata/all.agc \
+  -p ../../data/hprc465vschm13.aln.paf.gz \
+  -s ../../data/HPRC_r2_assemblies_0.6.1.agc \
+  -t 0.999 \
+  -r 5 \
+  -o darc.tajd.tsv
+```
+
+The resulting table reports `REGION`, window `LENGTH`, number of `SAMPLES`, segregating sites (`SEGREGATING_SITES`), window-wide `PI`, and `TAJIMAS_D` (with zero-S windows yielding `NA`).

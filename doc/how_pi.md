@@ -1,10 +1,11 @@
 # How nucleotide diversity is evaluated
 
 ## impg similarity + pica2.py
+test region (200bp) chr1:158,341,439-158,341,639
 
 ##### One window
 
-1. Generate the similarity matrix (requires impg support for AGC archives; adjust paths as needed):
+1. Generate the similarity matrix comparing all sequences:
 ```
 impg similarity \
   -p hprc465vschm13.aln.paf.gz \
@@ -14,7 +15,7 @@ impg similarity \
 
 2. Evaluate nucleotide diversity for the window (recommended `-t 0.999`, `-r 4`):
 ```
-python3 scripts/pica2.py tmp.sim \
+python3 pica2.py tmp.sim \
   -t 0.999 
   -l 200 
   -r 5
@@ -85,33 +86,3 @@ Rscript scripts/plot_pi_trend.R \
   --output ackr1_pi_trend.png
 ```
 
-
-
-### impg query + odgi similarity + pica2.py
-
-###### one window 
-1.query the gfa to extract a window:
-```
-impg query -p ../data/hprc465vschm13.aln.paf.gz -r CHM13#0#chr1:158341439-158343639 --sequence-files ../data/HPRC_r2_assemblies_0.6.1.agc -o gfa >tmp.1.gfa && odgi sort -i tmp.1.gfa -o - | odgi view -i - -g >tmp.gfa && rm tmp.1.gfa
-```
-
-2. evaluate similarity across pairs of haplotypes in the window:
-```
-odgi similarity -i tmp.gfa > tmp.sim 
-```
-
-3. evaluate nucleotide diversity in the window 
-```
-python3 scripts/pica2.py tmp.sim -t 0.988 -l 200 -r 5
-```
-
-###### run_pica2_odgi.sh: multi-window   
-0. make a bed file for windows 
-```
-echo -e "chr1\t158340000\t158344000" | bedtools  makewindows -b - -w 200   > ackr1.win.bed
-```
-
-1. run the wrap (reccomended t 0.999, r 4 )
-```
-../impop/scripts/run_pica2_odgi.sh -b ackr1.win.bed  -t 0.999 -r 4
-```

@@ -125,37 +125,51 @@ while IFS=$'\t' read -r chr start end rest; do
 
     if ! impg query -p "$PAF_FILE" -r "$REGION" --sequence-files "$SEQUENCE_FILES" -o gfa > "$raw_gfa"; then
         echo "Warning: impg query failed for region $REGION" >&2
+        rm -f "$raw_gfa" "$raw_og" "$sorted_gfa"
         continue
     fi
 
     if ! odgi build -g "$raw_gfa" -o "$raw_og" >/dev/null 2>&1; then
         echo "Warning: odgi build failed for region $REGION" >&2
+        rm -f "$raw_gfa" "$raw_og" "$sorted_gfa"
         continue
     fi
 
+    rm -f "$raw_gfa"
+
     if ! odgi sort -i "$raw_og" -o - 2>/dev/null | odgi view -i - -g > "$sorted_gfa"; then
         echo "Warning: odgi sort/view failed for region $REGION" >&2
+        rm -f "$raw_og" "$sorted_gfa"
         continue
     fi
+
+    rm -f "$raw_og"
 
     S_COUNT=$(povu gfa2vcf -i "$sorted_gfa" --stdout "$REFERENCE_NAME" 2>/dev/null | awk 'substr($0,1,1)!="#"' | wc -l | awk '{print $1}')
     if [ -z "$S_COUNT" ]; then
         echo "Warning: Failed to determine segregating sites for $REGION" >&2
+        rm -f "$sorted_gfa"
         continue
     fi
+
+    rm -f "$sorted_gfa"
 
     sim_tsv=$(mktemp tmp.tajd.sim.XXXXXX)
     tmpfiles+=("$sim_tsv")
 
     if ! impg similarity -p "$PAF_FILE" -r "$REGION" --sequence-files "$SEQUENCE_FILES" --subset-sequence-list "$SAMPLE_LIST" > "$sim_tsv"; then
         echo "Warning: impg similarity failed for region $REGION" >&2
+        rm -f "$sim_tsv"
         continue
     fi
 
     if ! pica_output=$(python3 "$PICA_SCRIPT" "$sim_tsv" -t "$THRESHOLD" -l "$LENGTH" -r "$R_VALUE" 2>/dev/null); then
         echo "Warning: pica2.py failed for region $REGION" >&2
+        rm -f "$sim_tsv"
         continue
     fi
+
+    rm -f "$sim_tsv"
 
     PI=$(printf '%s\n' "$pica_output" | awk '{print $1}')
     if [ -z "$PI" ]; then
@@ -180,7 +194,5 @@ while IFS=$'\t' read -r chr start end rest; do
     fi
 
     printf "%s\t%s\t%s\t%s\t%s\t%s\n" "$REGION" "$LENGTH" "$SAMPLE_COUNT" "$S_COUNT" "$PI" "$TAJ"
-
-    rm -f "$raw_gfa" "$sorted_gfa" "$sim_tsv"
 
 done < "$BED_FILE"

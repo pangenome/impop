@@ -26,7 +26,7 @@ $$F_{ST} = \frac{\pi_{between} - \pi_{within}}{\pi_{between}}$$
 > Hudson, R. R.; Slatkin, M.; Maddison, W. P. (1992). "Estimation of levels of gene flow from DNA sequence data." *Genetics*. **132** (2): 583–589.
 
 
-#### [How to evaluate Fst?](doc/how_tjd.md)
+#### [How to evaluate Fst?](doc/how_fst.md)
 
 ### Tajima's D 
 
@@ -41,7 +41,36 @@ $$D = \frac{\pi - S/a_1}{\sqrt{e_1 S + e_2 S (S - 1)}}$$
 
 > Tajima, F. (1989). *Statistical method for testing the neutral mutation hypothesis by DNA polymorphism.* Genetics, **123**(3), 585–595.  [Link to article (Genetics, 1989)](https://www.genetics.org/content/123/3/585)
 
-##### Example
+#### [How to evaluate Fst?](doc/how_tjd.md)
+
+##### Example 1 positive selection at *EDAR* 
+
+*EDAR* (chr2:109355029-109449802 on CHM13)
+
+The specific functional variant under selection is EDAR V370A (**rs3827760**, chr2:108897145-108897145 on hg38, chr2:109357703-109357703 on CHM13). This is a valine to alanine substitution at position 370 of the EDAR protein. The variant is located within the death domain of EDAR. 
+
+| Interval | **hg38** | **CHM13** |
+|----------|----------|-----------|
+| SNP Position | chr2:108897145-108897145 | chr2:109357703-109357703 |
+| 50 kb Interval | chr2:108872145-108922145 | chr2:109332703-109382703 |
+| 100 kb Interval | chr2:108847145-108947145 | chr2:109307703-109407703 |
+| 200 kb Interval | chr2:108797145-108997145 | chr2:109257703-109457703 |
+
+
+Key findings from this paper:
+
+The 370A allele shows extreme population differentiation (Fst = 0.760), higher than all other markers in their empirical distribution
+The derived 370A allele enhances NF-κB activation in vitro
+The selection occurred prior to 10,000 years ago (estimated ~10,740 years)
+The allele is at near fixation in East Asians and Native Americans but virtually absent in Africans and at low frequency in Europeans
+
+
+
+https://pmc.ncbi.nlm.nih.gov/articles/PMC2374902/
+https://pmc.ncbi.nlm.nih.gov/articles/PMC2687721/
+
+
+##### Example 1 *ACKR1* 
 
 The Duffy antigen locus (*ACKR1* aka *DARC*) represents one of the most striking examples of natural selection in human evolution, driven by malaria resistance. Three major allelic variants exist: FYB (ancestral), FYA (common in Asia and Europe), and FYO (Duffy null, fixed in sub-Saharan Africa). The FYO allele, characterized by a promoter mutation that prevents DARC expression on red blood cells, provides near-complete protection against Plasmodium vivax malaria and has undergone one of the strongest selective sweeps in the human genome with a selection coefficient of 0.043. This ancient selective event began approximately 42,000 years ago from standing variation at very low frequency (0.1\%), rather than from a new mutation, and swept to near-fixation throughout equatorial Africa where P. vivax posed the greatest threat. The extreme geographic differentiation of these alleles - with FY\*O at >99% frequency in most sub-Saharan populations but virtually absent elsewhere - combined with signatures of reduced diversity and extended haplotype homozygosity, demonstrates how pathogen pressure has profoundly shaped human genetic variation. Interestingly, despite being a textbook example of positive selection, the complex evolutionary history of this locus, involving selection on standing variation rather than a simple hard sweep, means it is often missed by standard genome-wide selection scans.
 
@@ -63,32 +92,3 @@ Key SNP: rs2814778 (T-42C) defines the FY\*O (also known as Duffy null) in the G
 
 
 
-
-### Tajima's D per window
-
-Use `scripts/run_tajd.sh` to compute segregating sites (S), nucleotide diversity (π), sample count (n), and Tajima's D for each BED window by combining `impg query`, `odgi`, `povu gfa2vcf`, `impg similarity`, `scripts/pica2.py`, and `scripts/tj_d.py`.
-
-Required inputs:
-- `-b` BED file with windows
-- `-l` sample list (one sequence ID per line) used as the subset for all analyses
-
-Common options:
-- `-p` PAF alignment (`impg query/similarity`)
-- `-s` AGC archive of assemblies
-- `-t` / `-r` parameters forwarded to `scripts/pica2.py`
-- `-P` region prefix (default `CHM13#0#`) and `-R` reference name passed to `povu`
-- `-o` output TSV path (defaults to stdout)
-
-Example:
-```
-scripts/run_tajd.sh \
-  -b darc.bed \
-  -l ../../metadata/all.agc \
-  -p ../../data/hprc465vschm13.aln.paf.gz \
-  -s ../../data/HPRC_r2_assemblies_0.6.1.agc \
-  -t 0.999 \
-  -r 5 \
-  -o darc.tajd.tsv
-```
-
-The resulting table reports `REGION`, window `LENGTH`, number of `SAMPLES`, segregating sites (`SEGREGATING_SITES`), window-wide `PI`, and `TAJIMAS_D` (with zero-S windows yielding `NA`).
