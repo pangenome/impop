@@ -4,7 +4,7 @@
 
 1. Generate a 500 bp window:
 ```
-echo -e "chr1	158291925	158292425" | bedtools makewindows -b - -w 500 > darc.bed
+echo -e "chr2\t109332703\t109382703" | bedtools makewindows -b - -w 500 > darc.bed
 ```
 
 2. Evaluate nucleotide diversity for subset A (`piA`):
@@ -69,7 +69,7 @@ Fst  = (0.31322113 - piAB) / 0.31322113
 
 1. Prepare a BED file with windows that satisfy `impg similarity` constraints (recommended ≤10 kb):
 ```
-echo -e "chr1\t158291925\t158292425" | bedtools makewindows -b - -w 500 > darc.bed
+echo -e "chr2\t109332703\t109382703" | bedtools makewindows -b - -w 5000 > region.bed
 ```
 
 2. Ensure you have two subset lists (plain text, one assembly per line) describing unique populations A and B:
@@ -88,7 +88,7 @@ head ../../metadata/agc.AFR
   -s ../../data/HPRC_r2_assemblies_0.6.1.agc \
   -t 0.999 \
   -r 5 \
-  -o darc.fst.tsv
+  -o eur.afr.fst
 ```
 
 4. Inspect the output table (`REGION`, `LENGTH`, `THRESHOLD`, `R_VALUE`, `PI_A`, `PI_B`, `PI_C`, `PI_AB_AVG`, `FST`). The script reports `NA` for `FST` when `piC` is zero and writes detailed `pica2.py` logs to `pica2_logs/` (override with `-d`).

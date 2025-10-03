@@ -1,7 +1,6 @@
 # How nucleotide diversity is evaluated
 
 ## impg similarity + pica2.py
-test region (200bp) chr1:158,341,439-158,341,639
 
 ##### One window
 

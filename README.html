@@ -1076,51 +1076,108 @@ body .markdown-body
 .highlight .vi{color:teal}
 .highlight .il{color:#009999}
 .highlight .gc{color:#999;background-color:#EAF2F5}
-</style><title>README</title></head><body><article class="markdown-body"><p>population genomics tools for implicit pangenomes</p>
-<p>Software required:
-- <a href="https://github.com/refresh-bio/agc">agc</a>
-- impg
-- odgi</p>
+</style><title>README</title></head><body><article class="markdown-body"><p><img src="/home/enza/iusatoProtocol/imscratch/impop/img/impop1.png" alt="implicit pangenome diagram" align="right" width="160" /></p>
+<h1 id="population-genomics-tools-for-implicit-pangenomes">Population Genomics Tools for Implicit Pangenomes<a class="headerlink" href="#population-genomics-tools-for-implicit-pangenomes" title="Permanent link"></a></h1>
+<p>Software required: <a href="https://github.com/refresh-bio/agc">agc</a>, <a href="https://github.com/pangenome/impg">impg</a>, <a href="https://github.com/pangenome/odgi">odgi</a>, <a href="https://github.com/pangenome/povu">povu</a></p>
+<p><a href="/home/enza/iusatoProtocol/imscratch/impop/doc/where_hprc_data.md">Dataset info</a></p>
 <h3 id="nucleotide-diversity">Nucleotide diversity<a class="headerlink" href="#nucleotide-diversity" title="Permanent link"></a></h3>
 <p>Sample-level unbiased estimator of average pairwise nucleotide diversity, with corrections for finite sample size <a href="https://en.wikipedia.org/wiki/Nucleotide_diversity">wiki</a>:</p>
 <p>$$\hat{\pi} = \frac{n}{n-1} \sum_{ij} x_i x_j \pi_{ij} = \frac{n}{n-1} \sum_{i=2}^n \sum_{j=1}^{i-1} 2 x_i x_j \pi_{ij}$$</p>
 <blockquote>
-<blockquote>
 <p>Nei, M.; Li, W.-H. (1979). &ldquo;Mathematical Model for Studying Genetic Variation in Terms of Restriction Endonucleases&rdquo;. <em>Proceedings of the National Academy of Sciences</em>. <strong>76</strong> (10): 5269–5273. doi:<a href="https://doi.org/10.1073/pnas.76.10.5269">10.1073/pnas.76.10.5269</a>. PMC <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC413122">413122</a>. PMID <a href="https://pubmed.ncbi.nlm.nih.gov/291943/">291943</a>.</p>
 </blockquote>
+<h4 id="how-to-evaluate-pi"><a href="/home/enza/iusatoProtocol/imscratch/impop/doc/how_pi.md">How to evaluate pi?</a><a class="headerlink" href="#how-to-evaluate-pi" title="Permanent link"></a></h4>
+<h3 id="hudsons-fst">Hudson&rsquo;s Fst<a class="headerlink" href="#hudsons-fst" title="Permanent link"></a></h3>
+<p>Measure of genetic differentiation between populations, comparing average diversity within and between them <a href="https://en.wikipedia.org/wiki/Fixation_index">wiki</a>:</p>
+<p>$$F_{ST} = \frac{\pi_{between} - \pi_{within}}{\pi_{between}}$$</p>
+<blockquote>
+<p>Hudson, R. R.; Slatkin, M.; Maddison, W. P. (1992). &ldquo;Estimation of levels of gene flow from DNA sequence data.&rdquo; <em>Genetics</em>. <strong>132</strong> (2): 583–589.</p>
 </blockquote>
-<h5 id="example">Example<a class="headerlink" href="#example" title="Permanent link"></a></h5>
-<p>Evaluate nucleotide diversity in the ACKR1 (DARC) gene region (chr1:158,340,000-158,344,000) in windows of 200 bp. Use the HPRCv2 assembly; coordinates are relative to CHM13.</p>
-<h3 id="impg-similarity-pica2py">impg similarity + pica2.py<a class="headerlink" href="#impg-similarity-pica2py" title="Permanent link"></a></h3>
-<h4 id="one-window">One window<a class="headerlink" href="#one-window" title="Permanent link"></a></h4>
-<ol>
-<li>
-<p>Generate the similarity matrix (requires impg support for AGC archives; adjust paths as needed):
-<code>impg similarity -p hprc465vschm13.aln.paf.gz -r CHM13#0#chr1:158341439-158341639 --sequence-files HPRC_r2_assemblies_0.6.1.agc &gt; tmp.sim</code></p>
-</li>
-<li>
-<p>Evaluate nucleotide diversity for the window (adjust the path to <code>scripts/pica2.py</code> if you run the command from elsewhere):
-<code>python3 scripts/pica2.py tmp.sim -t 0.988 -l 200 -r 5</code></p>
-</li>
-</ol>
-<h4 id="one-window-with-subsetting-sequences">One window with subsetting sequences<a class="headerlink" href="#one-window-with-subsetting-sequences" title="Permanent link"></a></h4>
-<p>Generate the similarity matrix from a subset of assemblies:
-<code>impg similarity -p ../data/hprc465vschm13.aln.paf.gz -r CHM13#0#chr1:158341439-158341639 --sequence-files ../data/HPRC_r2_assemblies_0.6.1.agc --subset-sequence-list ../metadata/agc.EUR &gt; EUR.sim</code></p>
-<h4 id="run_pica2_impgsh-multi-window">run_pica2_impg.sh: multi-window<a class="headerlink" href="#run_pica2_impgsh-multi-window" title="Permanent link"></a></h4>
-<ol>
-<li>
-<p>Prepare a BED file with windows (window size max 10kb as per impg similarity requirements):
-<code>echo -e "chr1\t158341439\t158341839" | bedtools makewindows -b - -w 200 &gt; ackr1.win.bed</code></p>
-</li>
-<li>
-<p>Run the wrapper (recommended <code>-t 0.999</code>, <code>-r 4</code>):
-<code>../impop/scripts/run_pica2_impg.sh -b ackr1.win.bed -t 0.999 -r 4</code></p>
-</li>
-</ol>
-<p>Use <code>-p</code> and <code>-s</code> to override the default PAF and sequence archives, and <code>-u</code> to restrict to assemblies listed in a plain-text file (one assembly name per line):
-<code>../impop/scripts/run_pica2_impg.sh -b ackr1.win.bed -t 0.999 -r 4 \
-  -p ../data/hprc465vschm13.aln.paf.gz \
-  -s ../data/HPRC_r2_assemblies_0.6.1.agc \
-  -u ../metadata/agc.EUR</code></p>
-<p>Add <code>-l &lt;length&gt;</code> when you need to override the window length passed to <code>pica2.py</code> (defaults to the BED interval size).</p>
-<p>Check <code>../impop/scripts/run_pica2_impg.sh -h</code> for the full option list.</p></article></body></html>
+<h4 id="how-to-evaluate-fst"><a href="/home/enza/iusatoProtocol/imscratch/impop/doc/how_fst.md">How to evaluate Fst?</a><a class="headerlink" href="#how-to-evaluate-fst" title="Permanent link"></a></h4>
+<h3 id="tajimas-d">Tajima&rsquo;s D<a class="headerlink" href="#tajimas-d" title="Permanent link"></a></h3>
+<p>Test statistic comparing two estimates of genetic variation: the average pairwise nucleotide diversity (π) and the number of segregating sites (S). It detects departures from the neutral mutation–drift equilibrium, such as population expansion, bottlenecks, or selection <a href="https://en.wikipedia.org/wiki/Tajima%27s_D">wiki</a>:</p>
+<p>$$D = \frac{\pi - S/a_1}{\sqrt{e_1 S + e_2 S (S - 1)}}$$</p>
+<p><strong>Interpretation</strong>:<br />
+- <strong>D ≈ 0</strong> → Consistent with neutral evolution and constant population size.<br />
+- <strong>D &lt; 0</strong> → Excess of low-frequency polymorphisms, suggesting population expansion or purifying selection.<br />
+- <strong>D &gt; 0</strong> → Excess of intermediate-frequency polymorphisms, suggesting balancing selection or a recent population bottleneck.  </p>
+<blockquote>
+<p>Tajima, F. (1989). <em>Statistical method for testing the neutral mutation hypothesis by DNA polymorphism.</em> Genetics, <strong>123</strong>(3), 585–595.  <a href="https://www.genetics.org/content/123/3/585">Link to article (Genetics, 1989)</a></p>
+</blockquote>
+<h4 id="how-to-evaluate-fst_1"><a href="/home/enza/iusatoProtocol/imscratch/impop/doc/how_tjd.md">How to evaluate Fst?</a><a class="headerlink" href="#how-to-evaluate-fst_1" title="Permanent link"></a></h4>
+<h3 id="example-positive-selection-at-edar">Example: positive selection at <em>EDAR</em><a class="headerlink" href="#example-positive-selection-at-edar" title="Permanent link"></a></h3>
+<p>The <em>EDAR</em> (chr2:109355029-109449802 on CHM13) 370A variant shows one of the strongest signals of positive selection in the human genome. This mutation arose ~10,740 years ago and swept to near-fixation in East Asian and Native American populations while remaining virtually absent in Africans. The variant shows extreme population differentiation (Fst = 0.760) and enhances NF-κB activation, affecting the development of hair, teeth, and sweat glands.</p>
+<p>The specific functional variant under selection is EDAR V370A (<strong>rs3827760</strong>, chr2:108897145-108897145 on hg38, chr2:109357703-109357703 on CHM13). This is a valine to alanine substitution at position 370 of the EDAR protein. The variant is located within the death domain of EDAR. </p>
+<table>
+<thead>
+<tr>
+<th>Interval</th>
+<th><strong>hg38</strong></th>
+<th><strong>CHM13</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SNP Position</td>
+<td>chr2:108897145-108897145</td>
+<td>chr2:109357703-109357703</td>
+</tr>
+<tr>
+<td>50 kb Interval</td>
+<td>chr2:108872145-108922145</td>
+<td>chr2:109332703-109382703</td>
+</tr>
+<tr>
+<td>100 kb Interval</td>
+<td>chr2:108847145-108947145</td>
+<td>chr2:109307703-109407703</td>
+</tr>
+<tr>
+<td>200 kb Interval</td>
+<td>chr2:108797145-108997145</td>
+<td>chr2:109257703-109457703</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>Bryk, J.; Hardouin, E.; Pugach, I.; Hughes, D.; Strotmann, R.; Stoneking, M.; Myles, S. (2008). &ldquo;Positive Selection in East Asians for an EDAR Allele that Enhances NF-κB Activation&rdquo;. <em>PLOS ONE</em>. <strong>3</strong> (5): e2209. doi:<a href="https://doi.org/10.1371/journal.pone.0002209">10.1371/journal.pone.0002209</a>. PMC <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2374902">2374902</a>. PMID <a href="https://pubmed.ncbi.nlm.nih.gov/18493316/">18493316</a>.</p>
+<p>Sabeti, P.C.; Varilly, P.; Fry, B.; Lohmueller, J.; Hostetter, E.; Cotsapas, C.; Xie, X.; Byrne, E.H.; McCarroll, S.A.; Gaudet, R.; Schaffner, S.F.; Lander, E.S.; The International HapMap Consortium (2007). &ldquo;Genome-wide detection and characterization of positive selection in human populations&rdquo;. <em>Nature</em>. <strong>449</strong> (7164): 913–918. doi:<a href="https://doi.org/10.1038/nature06250">10.1038/nature06250</a>. PMC <a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC2687721">2687721</a>. PMID <a href="https://pubmed.ncbi.nlm.nih.gov/17943131/">17943131</a>.</p>
+</blockquote>
+<h3 id="example-positive-selection-at-ackr1">Example: positive selection at <em>ACKR1</em><a class="headerlink" href="#example-positive-selection-at-ackr1" title="Permanent link"></a></h3>
+<p>The Duffy antigen locus (ACKR1/DARC) exemplifies powerful natural selection through malaria resistance. The FYO allele, carrying a promoter mutation that blocks DARC expression on red blood cells, provides near-complete protection against Plasmodium vivax malaria. This variant underwent one of the strongest selective sweeps in humans (selection coefficient 0.043), rising from 0.1% frequency ~42,000 years ago to &gt;99% in sub-Saharan Africa while remaining virtually absent elsewhere. Despite being a textbook case of positive selection, its evolution from standing variation rather than a new mutation causes it to be overlooked by standard selection scans.</p>
+<p>Key SNP: rs2814778 (T-42C) defines the FY*O (also known as Duffy null) in the GATA-1 transcription factor binding site in the <em>ACKR1</em> gene promoter region. </p>
+<table>
+<thead>
+<tr>
+<th>Interval</th>
+<th><strong>hg38</strong></th>
+<th><strong>CHM13</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SNP Position</td>
+<td>chr1:159204893-159204893 (rs2814778)</td>
+<td>chr1:158341919-158341919 (rs2814778)</td>
+</tr>
+<tr>
+<td>50 kb Interval</td>
+<td>chr1:159179893-159229893</td>
+<td>chr1:158316925-158366917</td>
+</tr>
+<tr>
+<td>100 kb Interval</td>
+<td>chr1:159154893-159254893</td>
+<td>chr1:158291925-158391926</td>
+</tr>
+<tr>
+<td>200 kb Interval</td>
+<td>chr1:159104893-159304893</td>
+<td>chr1:158241938-158441927</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p>McManus, K. F.; et al. (2017). &ldquo;Population genetic analysis of the DARC locus (Duffy) reveals adaptation from standing variation associated with malaria resistance in humans.&rdquo; <em>PLoS Genetics</em>. <strong>13</strong> (3): e1006560. doi:<a href="https://doi.org/10.1371/journal.pgen.1006560">10.1371/journal.pgen.1006560</a>.</p>
+<p>Voight, B. F.; Kudaravalli, S.; Wen, X.; Pritchard, J. K. (2006). &ldquo;A map of recent positive selection in the human genome.&rdquo; <em>PLoS Biology</em>. <strong>4</strong> (3): e72. doi:<a href="https://doi.org/10.1371/journal.pbio.0040072">10.1371/journal.pbio.0040072</a>.</p>
+</blockquote></article></body></html>
