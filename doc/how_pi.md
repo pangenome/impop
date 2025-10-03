@@ -2,6 +2,7 @@
 
 ## impg similarity + pica2.py
 test region (200bp) chr1:158,341,439-158,341,639
+pi for all sequences" 0.59146123 (sequence length: 200)
 
 ##### One window
 

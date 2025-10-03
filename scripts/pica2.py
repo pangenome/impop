@@ -118,6 +118,10 @@ def analyze_similarity_matrix(similarity_dict, elements, pair_count, threshold=1
     # Step 2: Calculate group pairs
     log_print(f"\nStep 2: Calculating group pairs")
     group_pairs = []
+    total_elements = sum(len(group) for group in groups)
+    if total_elements == 0:
+        log_print("Warning: No elements available to compute group pairs")
+        return 0.0, 0.0
     for i in range(len(groups)):
         for j in range(i+1, len(groups)):
             # Get similarity between groups (any element from each)
@@ -129,10 +133,16 @@ def analyze_similarity_matrix(similarity_dict, elements, pair_count, threshold=1
                 log_print(f"Warning: No similarity data found between groups G{i+1} and G{j+1}, skipping...")
                 continue
             
-            # Calculate pair value using (1 - similarity)
-            pair_value = (1 - similarity) * len(groups[i]) * len(groups[j])
+            # Calculate pair value using (1 - similarity) weighted by group frequencies
+            freq_i = len(groups[i]) / total_elements
+            freq_j = len(groups[j]) / total_elements
+            pair_value = (1 - similarity) * freq_i * freq_j
             group_pairs.append(pair_value)
-            log_print(f"  G{i+1}G{j+1}: (1 - {similarity:.6f}) * {len(groups[i])} * {len(groups[j])} = {pair_value:.6f}")
+            log_print(
+                f"  G{i+1}G{j+1}: (1 - {similarity:.6f}) * "
+                f"({len(groups[i])}/{total_elements}) * "
+                f"({len(groups[j])}/{total_elements}) = {pair_value:.6f}"
+            )
     
     # Step 3: Calculate pi
     log_print(f"\nStep 3: Calculating pi")
