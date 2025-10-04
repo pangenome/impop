@@ -49,21 +49,11 @@ python3 ../impop/scripts/tj_d.py  -n 446 -p 0.59146123 -S 20
 
 1. Prepare a BED file of windows (≤10 kb for `impg similarity`):
 ```
-echo -e "chr1\t158341439\t158341839" | bedtools makewindows -b - -w 200 > regions.bed
+echo -e "chr2\t109332703\t109382703" | bedtools makewindows -b - -w 5000 > region.bed
 ```
 
-2. Run the wrapper to generate π per window and intermediate similarity files:
-```
-../impop/scripts/run_pica2_impg.sh \
-  -b regions.bed \
-  -t 0.999 \
-  -r 5 \
-  -p ../data/hprc465vschm13.aln.paf.gz \
-  -s ../data/HPRC_r2_assemblies_0.6.1.agc \
-  -u ../metadata/all.agc
-```
+2. 
 
-3. Feed the resulting π values, sample list, and segregating-site counts into `scripts/run_tajd.sh` to obtain Tajima's D across all windows:
 ```
 ../impop/scripts/run_tajd.sh \
   -b regions.bed \
@@ -108,3 +98,19 @@ scripts/run_tajd.sh \
 ```
 
 The resulting table reports `REGION`, window `LENGTH`, number of `SAMPLES`, segregating sites (`SEGREGATING_SITES`), window-wide `PI`, and `TAJIMAS_D` (with zero-S windows yielding `NA`).
+
+### Plotting trends across runs
+
+Use `scripts/plot_tajd_trend.R` to visualise Tajima's D profiles from one or more `run_tajd.sh` outputs. Supply each file with `--input`, optionally prefixing a label before the equals sign. You can also highlight genomic intervals via `--highlight chrom:start-end` or `--highlight-bed path/to/regions.bed`.
+
+Example:
+```
+Rscript scripts/plot_tajd_trend.R \
+  --input=Baseline=results/baseline.tajd.tsv \
+  --input=Treatment=results/treatment.tajd.tsv \
+  --output tajd_trend.png \
+  --title "Tajima's D comparison" \
+  --highlight chr2:109332703-109382703
+```
+
+The script combines windows from all runs, lays them out along a concatenated genome axis, and draws per-run lines and points for Tajima's D while shading any highlighted regions.

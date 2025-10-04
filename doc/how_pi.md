@@ -95,8 +95,22 @@ Example:
 Rscript plot_pi_trend.R \
   --input EUR=pi.eur.tsv \
   --input AFR=pi.afr.tsv \
-  --title "ACKR1" \
-  --highlight chr1:158341439-158341639 \
+  --input AMR=pi.amr.tsv \
+  --input EAS=pi.eas.tsv \
+  --input SAS=pi.sas.tsv \
+  --title " nucleotide diversity  - ACKR1" \
+  --highlight chr1:158341869-158341969 \
   --output ackr1_pi.png
 ```
 
+#### Batch plotting from a folder
+
+To plot every table stored in a directory, point the script at the folder and it will pull in each regular file automatically:
+
+```
+Rscript scripts/plot_pi_trend.R \
+  --input-dir results/pi_tables \
+  --title "chromosome 1 diversity"
+```
+
+Population labels are taken verbatim from the `SUBSET` column when present, so keep the column contents exactly as you want them to appear in the legend.

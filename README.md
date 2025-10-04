@@ -81,5 +81,3 @@ Key SNP: rs2814778 (T-42C) defines the FY\*O (also known as Duffy null) in the G
 
 > Voight, B. F.; Kudaravalli, S.; Wen, X.; Pritchard, J. K. (2006). "A map of recent positive selection in the human genome." *PLoS Biology*. **4** (3): e72. doi:[10.1371/journal.pbio.0040072](https://doi.org/10.1371/journal.pbio.0040072).
 
-
-

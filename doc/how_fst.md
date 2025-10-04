@@ -115,8 +115,14 @@ Common options mirror `plot_pi_trend.R`:
 Example:
 ```
 Rscript scripts/plot_fst_trend.R \
-  --input AFRvEUR=results/darc.fst.tsv \
-  --title "ACKR1 Fst" \
-  --highlight chr1:158291925-158292425 \
-  --output ackr1_fst_trend.png
+  --input AFRvEUR=eur.afr.fst \
+  --input AFRvEAS=eas.afr.fst\
+  --input AFRvSAS=sas.afr.fst \
+  --input EASvSAS=eas.sas.fst \
+  --input EASvEUR=eas.eur.fst \
+  --input SASvEUR=sas.eur.fst \
+  --title "EDAR - Fst " \
+  --highlight chr2:109357703-109357703 \
+  --output edar_fst_trend.png
+
 ```

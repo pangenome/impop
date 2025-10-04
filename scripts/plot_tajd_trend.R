@@ -12,8 +12,7 @@ suppressPackageStartupMessages({
 parse_args <- function() {
   args <- commandArgs(trailingOnly = TRUE)
   inputs <- character()
-  input_dir <- NULL
-  output <- "pi_trend.png"
+  output <- "tajd_trend.png"
   plot_title <- NULL
   dpi <- 150
   highlights <- character()
@@ -32,19 +31,6 @@ parse_args <- function() {
     if (arg %in% c("--input", "-i")) {
       if (i == length(args)) stop("--input requires a value", call. = FALSE)
       inputs <- c(inputs, args[[i + 1]])
-      i <- i + 2
-      next
-    }
-
-    if (grepl("^--input-dir=", arg)) {
-      input_dir <- sub("^--input-dir=", "", arg)
-      i <- i + 1
-      next
-    }
-
-    if (arg == "--input-dir") {
-      if (i == length(args)) stop("--input-dir requires a value", call. = FALSE)
-      input_dir <- args[[i + 1]]
       i <- i + 2
       next
     }
@@ -117,13 +103,12 @@ parse_args <- function() {
     stop(sprintf("Unknown argument: %s", arg), call. = FALSE)
   }
 
-  if (length(inputs) == 0 && is.null(input_dir)) {
-    stop("At least one --input or --input-dir specification is required", call. = FALSE)
+  if (length(inputs) == 0) {
+    stop("At least one --input specification is required", call. = FALSE)
   }
 
   list(
     inputs = inputs,
-    input_dir = input_dir,
     output = output,
     title = plot_title,
     dpi = dpi,
@@ -179,14 +164,14 @@ read_highlight_bed <- function(path) {
   bed
 }
 
-read_pi_table <- function(path, label_override = NULL) {
+read_tajd_table <- function(path, label_override = NULL) {
   if (!file.exists(path)) {
     stop(sprintf("Input file not found: %s", path), call. = FALSE)
   }
 
-  df <- utils::read.delim(path, header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+  df <- utils::read.delim(path, header = TRUE, sep = "\t", stringsAsFactors = FALSE, na.strings = c("NA", "NaN", "nan"))
 
-  required_cols <- c("REGION", "PICA_OUTPUT")
+  required_cols <- c("REGION", "LENGTH", "SAMPLES", "SEGREGATING_SITES", "PI", "TAJIMAS_D")
   missing <- setdiff(required_cols, names(df))
   if (length(missing) > 0) {
     stop(sprintf("File %s is missing required columns: %s", path, paste(missing, collapse = ", ")), call. = FALSE)
@@ -198,24 +183,21 @@ read_pi_table <- function(path, label_override = NULL) {
     stop(sprintf("Failed to parse REGION values in %s", path), call. = FALSE)
   }
 
-  chrom <- vapply(coords, function(x) x[2], character(1))
-  start <- as.numeric(vapply(coords, function(x) x[3], character(1)))
-  end <- as.numeric(vapply(coords, function(x) x[4], character(1)))
+  df$chrom <- vapply(coords, function(x) x[2], character(1))
+  df$start <- as.numeric(vapply(coords, function(x) x[3], character(1)))
+  df$end <- as.numeric(vapply(coords, function(x) x[4], character(1)))
+  df$midpoint <- (df$start + df$end) / 2
 
-  df$chrom <- chrom
-  df$start <- start
-  df$end <- end
-  df$midpoint <- (start + end) / 2
+  df$pi <- as.numeric(df$PI)
+  df$tajimas_d <- suppressWarnings(as.numeric(df$TAJIMAS_D))
 
-  df$pi <- as.numeric(sub(" .*$", "", df$PICA_OUTPUT))
-
-  if ("SUBSET" %in% names(df)) {
-    df$label <- as.character(df$SUBSET)
-  } else if (!is.null(label_override)) {
-    df$label <- label_override
+  if (!is.null(label_override)) {
+    label <- label_override
   } else {
-    df$label <- tools::file_path_sans_ext(basename(path))
+    label <- tools::file_path_sans_ext(basename(path))
   }
+
+  df$label <- label
   df$source <- path
   df
 }
@@ -232,45 +214,31 @@ compute_offsets <- function(df, gap = 5e5) {
     dplyr::mutate(order_key = chrom_sort_key(chrom)) |>
     dplyr::arrange(order_key)
 
-  chrom_max <- df |> dplyr::group_by(chrom) |> dplyr::summarise(chrom_end = max(end), .groups = "drop")
+  chrom_max <- df |>
+    dplyr::group_by(chrom) |>
+    dplyr::summarise(chrom_end = max(end, na.rm = TRUE), .groups = "drop")
 
   chrom_order <- dplyr::left_join(chrom_order, chrom_max, by = "chrom")
 
   offsets <- numeric(nrow(chrom_order))
   cumulative <- 0
-  for (i in seq_len(nrow(chrom_order))) {
-    offsets[i] <- cumulative
-    cumulative <- cumulative + chrom_order$chrom_end[i] + gap
+  for (idx in seq_len(nrow(chrom_order))) {
+    offsets[idx] <- cumulative
+    cumulative <- cumulative + chrom_order$chrom_end[idx] + gap
   }
 
   chrom_order$offset <- offsets
   chrom_order
 }
 
-format_bp_value <- function(bp) {
-  bp <- as.numeric(bp)
-  out <- rep(NA_character_, length(bp))
-  valid <- !is.na(bp)
-  if (!any(valid)) {
-    return(out)
+plot_tajd_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL) {
+  df <- df |>
+    dplyr::filter(!is.na(tajimas_d)) |>
+    dplyr::arrange(factor(chrom, levels = unique(chrom)))
+
+  if (nrow(df) == 0) {
+    stop("No valid Tajima's D values available to plot after filtering NA entries.", call. = FALSE)
   }
-  out[valid] <- sprintf("%d bp", round(bp[valid]))
-  mega <- valid & bp >= 1e6
-  out[mega] <- sprintf("%.2f Mb", bp[mega] / 1e6)
-  kilo <- valid & !mega & bp >= 1e3
-  out[kilo] <- sprintf("%.1f kb", bp[kilo] / 1e3)
-  out
-}
-
-format_plain_coord <- function(bp) {
-  bp <- as.numeric(bp)
-  fmt <- format(round(bp), big.mark = ",", scientific = FALSE, trim = TRUE)
-  fmt[is.na(bp)] <- NA_character_
-  fmt
-}
-
-plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL) {
-  df <- df |> dplyr::arrange(factor(chrom, levels = unique(chrom)))
 
   chrom_offsets <- compute_offsets(df)
   df <- dplyr::left_join(df, chrom_offsets[, c("chrom", "offset")], by = "chrom")
@@ -288,72 +256,13 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
   names(colour_values) <- pop_levels
   df$label <- factor(df$label, levels = pop_levels)
 
-  region_summary <- df |>
+  centers <- df |>
     dplyr::group_by(chrom) |>
-    dplyr::summarise(
-      offset = dplyr::first(offset),
-      start_bp = min(start),
-      end_bp = max(end),
-      .groups = "drop"
-    ) |>
-    dplyr::arrange(offset)
-
-  total_length_bp <- sum(region_summary$end_bp - region_summary$start_bp)
-  total_length_text <- format_bp_value(total_length_bp)[1]
-
-  window_lengths <- df$end - df$start
-  window_lengths <- window_lengths[!is.na(window_lengths)]
-  if (length(window_lengths) == 0) {
-    window_size_text <- "unknown"
-  } else {
-    unique_sizes <- sort(unique(window_lengths))
-    if (length(unique_sizes) == 1) {
-      window_size_text <- format_bp_value(unique_sizes)[1]
-    } else {
-      window_size_text <- sprintf(
-        "%s–%s",
-        format_bp_value(min(unique_sizes))[1],
-        format_bp_value(max(unique_sizes))[1]
-      )
-    }
-  }
-
-  subtitle_text <- sprintf(
-    "Total region length: %s; Window size: %s",
-    total_length_text,
-    window_size_text
-  )
-
-  tick_list <- lapply(seq_len(nrow(region_summary)), function(i) {
-    row <- region_summary[i, ]
-    local_breaks <- pretty(c(row$start_bp, row$end_bp), n = 4)
-    local_breaks <- sort(unique(c(row$start_bp, row$end_bp, local_breaks)))
-    local_breaks <- local_breaks[local_breaks >= row$start_bp & local_breaks <= row$end_bp]
-    data.frame(
-      pos = row$offset + local_breaks,
-      label = format_plain_coord(local_breaks),
-      stringsAsFactors = FALSE
-    )
-  })
-
-  tick_df <- if (length(tick_list) > 0) {
-    dplyr::bind_rows(tick_list) |>
-      dplyr::arrange(pos) |>
-      dplyr::distinct(pos, .keep_all = TRUE)
-  } else {
-    data.frame(pos = numeric(0), label = character(0))
-  }
-
-  chrom_axis_title <- {
-    chrom_names <- unique(region_summary$chrom)
-    stripped <- sub("^chr", "", chrom_names, ignore.case = TRUE)
-    stripped <- sub("^chromosome ", "", stripped, ignore.case = TRUE)
-    if (length(stripped) == 1) {
-      sprintf("Chromosome %s", stripped)
-    } else {
-      "Chromosome"
-    }
-  }
+    dplyr::summarise(center = mean(genome_pos), .groups = "drop") |>
+    dplyr::mutate(order_key = chrom_sort_key(chrom)) |>
+    dplyr::arrange(order_key) |>
+    dplyr::left_join(chrom_offsets[, c("chrom", "offset")], by = "chrom") |>
+    dplyr::mutate(label = sprintf("%s\n%.1f Mb", chrom, (center - offset) / 1e6))
 
   vlines <- chrom_offsets$offset
   vlines <- vlines[vlines != 0]
@@ -371,7 +280,7 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
       )
   }
 
-  plt <- ggplot2::ggplot(df, ggplot2::aes(x = genome_pos, y = pi, colour = label))
+  plt <- ggplot2::ggplot(df, ggplot2::aes(x = genome_pos, y = tajimas_d, colour = label))
 
   if (!is.null(highlight_df) && nrow(highlight_df) > 0) {
     plt <- plt + ggplot2::geom_rect(
@@ -385,14 +294,18 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
 
   label_df <- NULL
   if (!is.null(highlight_df) && nrow(highlight_df) > 0) {
-    ymax <- max(df$pi, na.rm = TRUE)
+    range_y <- range(df$tajimas_d, na.rm = TRUE)
+    ymax <- range_y[2]
+    span <- diff(range_y)
+    adjust <- if (is.finite(span) && span > 0) span * 0.05 else 0.5
+    label_y <- ymax + adjust
     label_df <- highlight_df |>
       dplyr::mutate(
         label = sprintf("%s:%.2f-%.2f Mb", chrom, start / 1e6, end / 1e6),
         x = (xmin + xmax) / 2,
-        y = ymax * 1.05
+        y = label_y
       )
-    plt <- plt + ggplot2::expand_limits(y = max(label_df$y, ymax, na.rm = TRUE))
+    plt <- plt + ggplot2::expand_limits(y = label_y)
   }
 
   plt <- plt +
@@ -406,18 +319,13 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
       legend.key = ggplot2::element_rect(fill = "white", colour = NA)
     ) +
     ggplot2::labs(
-      title = title,
-      subtitle = subtitle_text,
-      x = chrom_axis_title,
-      y = expression(pi),
-      colour = "Population"
+      x = "Genomic position (window midpoint)",
+      y = "Tajima's D",
+      colour = "Run"
     ) +
-    ggplot2::scale_x_continuous(
-      breaks = tick_df$pos,
-      labels = tick_df$label
-    ) +
+    ggplot2::scale_x_continuous(breaks = centers$center, labels = centers$label) +
     ggplot2::scale_colour_manual(values = colour_values) +
-    ggplot2::guides(colour = ggplot2::guide_legend(title = "Population")) +
+    ggplot2::guides(colour = ggplot2::guide_legend(title = "Run")) +
     ggplot2::theme(panel.grid.major.x = ggplot2::element_blank(), panel.grid.minor.x = ggplot2::element_blank())
 
   if (!is.null(label_df) && nrow(label_df) > 0) {
@@ -436,6 +344,11 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
   if (length(vlines) > 0) {
     plt <- plt + ggplot2::geom_vline(xintercept = vlines, colour = "grey70", linetype = "dashed", linewidth = 0.3)
   }
+
+  if (!is.null(title)) {
+    plt <- plt + ggplot2::ggtitle(title)
+  }
+
   message(sprintf("Saving plot to %s", output))
   ggplot2::ggsave(filename = output, plot = plt, width = 11, height = 4, dpi = dpi, units = "in")
 }
@@ -444,29 +357,7 @@ main <- function() {
   opts <- parse_args()
 
   specs <- lapply(opts$inputs, parse_input_spec)
-
-  if (!is.null(opts$input_dir)) {
-    if (!dir.exists(opts$input_dir)) {
-      stop(sprintf("Input directory not found: %s", opts$input_dir), call. = FALSE)
-    }
-    dir_files <- list.files(opts$input_dir, full.names = TRUE)
-    if (length(dir_files) == 0) {
-      stop(sprintf("No files found in input directory: %s", opts$input_dir), call. = FALSE)
-    }
-    file_info <- file.info(dir_files)
-    dir_files <- dir_files[!is.na(file_info$isdir) & !file_info$isdir]
-    if (length(dir_files) == 0) {
-      stop(sprintf("No regular files found in input directory: %s", opts$input_dir), call. = FALSE)
-    }
-    dir_specs <- lapply(sort(dir_files), function(path) list(label = NULL, path = path))
-    specs <- c(specs, dir_specs)
-  }
-
-  if (length(specs) == 0) {
-    stop("No input files provided", call. = FALSE)
-  }
-
-  tables <- lapply(specs, function(spec) read_pi_table(spec$path, spec$label))
+  tables <- lapply(specs, function(spec) read_tajd_table(spec$path, spec$label))
   combined <- dplyr::bind_rows(tables)
 
   highlight_df <- NULL
@@ -483,15 +374,9 @@ main <- function() {
     }
   }
 
-  plot_pi_trend(combined, opts$output, opts$title, opts$dpi, highlight_df)
+  plot_tajd_trend(combined, opts$output, opts$title, opts$dpi, highlight_df)
 }
 
 if (identical(environment(), globalenv())) {
-  suppressPackageStartupMessages({
-    if (!requireNamespace("dplyr", quietly = TRUE)) {
-      stop("Package 'dplyr' is required. Please install it with install.packages('dplyr').", call. = FALSE)
-    }
-  })
-
   main()
 }
