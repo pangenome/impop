@@ -12,6 +12,7 @@ suppressPackageStartupMessages({
 parse_args <- function() {
   args <- commandArgs(trailingOnly = TRUE)
   inputs <- character()
+  input_dir <- NULL
   output <- "fst_trend.png"
   plot_title <- NULL
   dpi <- 150
@@ -31,6 +32,19 @@ parse_args <- function() {
     if (arg %in% c("--input", "-i")) {
       if (i == length(args)) stop("--input requires a value", call. = FALSE)
       inputs <- c(inputs, args[[i + 1]])
+      i <- i + 2
+      next
+    }
+
+    if (grepl("^--input-dir=", arg)) {
+      input_dir <- sub("^--input-dir=", "", arg)
+      i <- i + 1
+      next
+    }
+
+    if (arg == "--input-dir") {
+      if (i == length(args)) stop("--input-dir requires a value", call. = FALSE)
+      input_dir <- args[[i + 1]]
       i <- i + 2
       next
     }
@@ -103,12 +117,13 @@ parse_args <- function() {
     stop(sprintf("Unknown argument: %s", arg), call. = FALSE)
   }
 
-  if (length(inputs) == 0) {
-    stop("At least one --input specification is required", call. = FALSE)
+  if (length(inputs) == 0 && is.null(input_dir)) {
+    stop("At least one --input or --input-dir specification is required", call. = FALSE)
   }
 
   list(
     inputs = inputs,
+    input_dir = input_dir,
     output = output,
     title = plot_title,
     dpi = dpi,
@@ -232,8 +247,30 @@ compute_offsets <- function(df, gap = 5e5) {
   chrom_order
 }
 
+format_bp_value <- function(bp) {
+  bp <- as.numeric(bp)
+  out <- rep(NA_character_, length(bp))
+  valid <- !is.na(bp)
+  if (!any(valid)) {
+    return(out)
+  }
+  out[valid] <- sprintf("%d bp", round(bp[valid]))
+  mega <- valid & bp >= 1e6
+  out[mega] <- sprintf("%.2f Mb", bp[mega] / 1e6)
+  kilo <- valid & !mega & bp >= 1e3
+  out[kilo] <- sprintf("%.1f kb", bp[kilo] / 1e3)
+  out
+}
+
+format_plain_coord <- function(bp) {
+  bp <- as.numeric(bp)
+  fmt <- format(round(bp), big.mark = ",", scientific = FALSE, trim = TRUE)
+  fmt[is.na(bp)] <- NA_character_
+  fmt
+}
+
 plot_fst_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL) {
-  df <- dplyr::arrange(df, factor(chrom, levels = unique(chrom)))
+  df <- df |> dplyr::arrange(factor(chrom, levels = unique(chrom)))
 
   chrom_offsets <- compute_offsets(df)
   df <- dplyr::left_join(df, chrom_offsets[, c("chrom", "offset")], by = "chrom")
@@ -251,13 +288,72 @@ plot_fst_trend <- function(df, output, title = NULL, dpi = 150, highlights = NUL
   names(colour_values) <- comparison_levels
   df$label <- factor(df$label, levels = comparison_levels)
 
-  centers <- df |>
+  region_summary <- df |>
     dplyr::group_by(chrom) |>
-    dplyr::summarise(center = mean(genome_pos), .groups = "drop") |>
-    dplyr::mutate(order_key = chrom_sort_key(chrom)) |>
-    dplyr::arrange(order_key) |>
-    dplyr::left_join(chrom_offsets[, c("chrom", "offset")], by = "chrom") |>
-    dplyr::mutate(label = sprintf("%s\n%.1f Mb", chrom, (center - offset) / 1e6))
+    dplyr::summarise(
+      offset = dplyr::first(offset),
+      start_bp = min(start),
+      end_bp = max(end),
+      .groups = "drop"
+    ) |>
+    dplyr::arrange(offset)
+
+  total_length_bp <- sum(region_summary$end_bp - region_summary$start_bp)
+  total_length_text <- format_bp_value(total_length_bp)[1]
+
+  window_lengths <- df$end - df$start
+  window_lengths <- window_lengths[!is.na(window_lengths)]
+  if (length(window_lengths) == 0) {
+    window_size_text <- "unknown"
+  } else {
+    unique_sizes <- sort(unique(window_lengths))
+    if (length(unique_sizes) == 1) {
+      window_size_text <- format_bp_value(unique_sizes)[1]
+    } else {
+      window_size_text <- sprintf(
+        "%s–%s",
+        format_bp_value(min(unique_sizes))[1],
+        format_bp_value(max(unique_sizes))[1]
+      )
+    }
+  }
+
+  subtitle_text <- sprintf(
+    "Total region length: %s; Window size: %s",
+    total_length_text,
+    window_size_text
+  )
+
+  tick_list <- lapply(seq_len(nrow(region_summary)), function(i) {
+    row <- region_summary[i, ]
+    local_breaks <- pretty(c(row$start_bp, row$end_bp), n = 4)
+    local_breaks <- sort(unique(c(row$start_bp, row$end_bp, local_breaks)))
+    local_breaks <- local_breaks[local_breaks >= row$start_bp & local_breaks <= row$end_bp]
+    data.frame(
+      pos = row$offset + local_breaks,
+      label = format_plain_coord(local_breaks),
+      stringsAsFactors = FALSE
+    )
+  })
+
+  tick_df <- if (length(tick_list) > 0) {
+    dplyr::bind_rows(tick_list) |>
+      dplyr::arrange(pos) |>
+      dplyr::distinct(pos, .keep_all = TRUE)
+  } else {
+    data.frame(pos = numeric(0), label = character(0))
+  }
+
+  chrom_axis_title <- {
+    chrom_names <- unique(region_summary$chrom)
+    stripped <- sub("^chr", "", chrom_names, ignore.case = TRUE)
+    stripped <- sub("^chromosome ", "", stripped, ignore.case = TRUE)
+    if (length(stripped) == 1) {
+      sprintf("Chromosome %s", stripped)
+    } else {
+      "Chromosome"
+    }
+  }
 
   vlines <- chrom_offsets$offset
   vlines <- vlines[vlines != 0]
@@ -309,8 +405,17 @@ plot_fst_trend <- function(df, output, title = NULL, dpi = 150, highlights = NUL
       legend.background = ggplot2::element_rect(fill = "white", colour = NA),
       legend.key = ggplot2::element_rect(fill = "white", colour = NA)
     ) +
-    ggplot2::labs(x = "Genomic position (window midpoint)", y = expression(F[ST]), colour = "Comparison") +
-    ggplot2::scale_x_continuous(breaks = centers$center, labels = centers$label) +
+    ggplot2::labs(
+      title = title,
+      subtitle = subtitle_text,
+      x = chrom_axis_title,
+      y = expression(F[ST]),
+      colour = "Comparison"
+    ) +
+    ggplot2::scale_x_continuous(
+      breaks = tick_df$pos,
+      labels = tick_df$label
+    ) +
     ggplot2::scale_colour_manual(values = colour_values) +
     ggplot2::guides(colour = ggplot2::guide_legend(title = "Comparison")) +
     ggplot2::theme(panel.grid.major.x = ggplot2::element_blank(), panel.grid.minor.x = ggplot2::element_blank())
@@ -332,39 +437,62 @@ plot_fst_trend <- function(df, output, title = NULL, dpi = 150, highlights = NUL
     plt <- plt + ggplot2::geom_vline(xintercept = vlines, colour = "grey70", linetype = "dashed", linewidth = 0.3)
   }
 
-  if (!is.null(title)) {
-    plt <- plt + ggplot2::ggtitle(title)
-  }
-
-  ggplot2::ggsave(output, plot = plt, dpi = dpi, width = 10, height = 5, units = "in")
+  message(sprintf("Saving plot to %s", output))
+  ggplot2::ggsave(filename = output, plot = plt, width = 11, height = 4, dpi = dpi, units = "in")
 }
 
 main <- function() {
-  args <- parse_args()
+  opts <- parse_args()
 
   highlight_regions <- NULL
-  if (length(args$highlights) > 0) {
-    highlight_regions <- do.call(rbind, lapply(args$highlights, parse_highlight_spec))
+  if (length(opts$highlights) > 0) {
+    highlight_regions <- do.call(rbind, lapply(opts$highlights, parse_highlight_spec))
   }
 
-  if (!is.null(args$highlight_bed)) {
-    bed <- read_highlight_bed(args$highlight_bed)
-    highlight_regions <- if (is.null(highlight_regions)) bed else rbind(highlight_regions, bed)
+  if (!is.null(opts$highlight_bed)) {
+    bed_regions <- read_highlight_bed(opts$highlight_bed)
+    if (is.null(highlight_regions)) {
+      highlight_regions <- bed_regions
+    } else {
+      highlight_regions <- rbind(highlight_regions, bed_regions)
+    }
   }
 
-  tables <- lapply(args$inputs, function(spec) {
-    parsed <- parse_input_spec(spec)
-    read_fst_table(parsed$path, label_override = parsed$label)
-  })
+  specs <- lapply(opts$inputs, parse_input_spec)
+
+  if (!is.null(opts$input_dir)) {
+    if (!dir.exists(opts$input_dir)) {
+      stop(sprintf("Input directory not found: %s", opts$input_dir), call. = FALSE)
+    }
+    dir_files <- list.files(opts$input_dir, full.names = TRUE)
+    if (length(dir_files) == 0) {
+      stop(sprintf("No files found in input directory: %s", opts$input_dir), call. = FALSE)
+    }
+    file_info <- file.info(dir_files)
+    dir_files <- dir_files[!is.na(file_info$isdir) & !file_info$isdir]
+    if (length(dir_files) == 0) {
+      stop(sprintf("No regular files found in input directory: %s", opts$input_dir), call. = FALSE)
+    }
+    dir_specs <- lapply(sort(dir_files), function(path) list(label = NULL, path = path))
+    specs <- c(specs, dir_specs)
+  }
+
+  if (length(specs) == 0) {
+    stop("No input files provided", call. = FALSE)
+  }
+
+  tables <- lapply(specs, function(spec) read_fst_table(spec$path, label_override = spec$label))
 
   combo <- dplyr::bind_rows(tables)
   combo <- combo[!is.na(combo$fst), , drop = FALSE]
 
   if (nrow(combo) == 0) {
-    stop("No valid Fst values found after filtering.", call. = FALSE)
+    stop("No valid FST values found after filtering.", call. = FALSE)
   }
 
-  plot_fst_trend(combo, args$output, title = args$title, dpi = args$dpi, highlights = highlight_regions)
+  plot_fst_trend(combo, opts$output, title = opts$title, dpi = opts$dpi, highlights = highlight_regions)
 }
 
-main()
+if (identical(environment(), globalenv())) {
+  main()
+}

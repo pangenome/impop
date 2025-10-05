@@ -95,9 +95,6 @@ Example:
 Rscript plot_pi_trend.R \
   --input EUR=pi.eur.tsv \
   --input AFR=pi.afr.tsv \
-  --input AMR=pi.amr.tsv \
-  --input EAS=pi.eas.tsv \
-  --input SAS=pi.sas.tsv \
   --title " nucleotide diversity  - ACKR1" \
   --highlight chr1:158341869-158341969 \
   --output ackr1_pi.png
@@ -109,7 +106,7 @@ To plot every table stored in a directory, point the script at the folder and it
 
 ```
 Rscript scripts/plot_pi_trend.R \
-  --input-dir results/pi_tables \
+  --input-dir res/ \
   --title "chromosome 1 diversity"
 ```
 

@@ -2,27 +2,25 @@
 
 ##### One window
 
-1. Generate a 500 bp window:
-```
-echo -e "chr2\t109332703\t109382703" | bedtools makewindows -b - -w 500 > darc.bed
-```
+Consider a 200 bp region surrounding rs3827760 (chr2:109357603-109357803), and evaluate Fst between Africans (AFR) and East Asians (EAS):  
 
-2. Evaluate nucleotide diversity for subset A (`piA`):
+2. Evaluate nucleotide diversity for EUR:
 ```
 impg similarity \
-  --sequence-files ../../data/HPRC_r2_assemblies_0.6.1.agc \
-  -p ../../data/hprc465vschm13.aln.paf.gz \
-  -r CHM13#0#chr1:158291925-158292425 \
-  --subset-sequence-list ../../metadata/agc.EUR > eur.sim
+  --sequence-files HPRC_r2_assemblies_0.6.1.agc \
+  -p hprc465vschm13.aln.paf.gz \
+  -r CHM13#0#chr2:109357603-109357803 \
+  --subset-sequence-list agc.EUR > eur.sim
 
-python3 ../../impop/scripts/pica2.py eur.sim \
+python3 pica2.py eur.sim \
   -t 0.999 \
   -l 500 \
   -r 5
-# -> 0.00510773 (sequence length: 500)
 ```
+>> 0.00000279 (sequence length: 500)
 
-3. Evaluate nucleotide diversity for subset B (`piB`):
+
+3. Evaluate nucleotide diversity for AFR:
 ```
 impg similarity \
   --sequence-files ../../data/HPRC_r2_assemblies_0.6.1.agc \
@@ -34,38 +32,48 @@ python3 ../../impop/scripts/pica2.py afr.sim \
   -t 0.999 \
   -l 500 \
   -r 5
-# -> 0.15271961 (sequence length: 500)
 ```
+>> 0.00000577 (sequence length: 500)
 
-4. Build the union list and evaluate the combined diversity (`piC`):
+
+4. Build the union list and evaluate the combined diversity:
 ```
-cat ../../metadata/agc.AFR ../../metadata/agc.EUR > temp.agc.AFREUR
+cat agc.AFR agc.EUR > temp.agc.afr.eur
 
 impg similarity \
-  --sequence-files ../../data/HPRC_r2_assemblies_0.6.1.agc \
-  -p ../../data/hprc465vschm13.aln.paf.gz \
+  --sequence-files HPRC_r2_assemblies_0.6.1.agc \
+  -p hprc465vschm13.aln.paf.gz \
   -r CHM13#0#chr1:158291925-158292425 \
-  --subset-sequence-list temp.agc.AFREUR > afreur.sim
+  --subset-sequence-list temp.agc.afr.eur > afreur.sim
 
 python3 ../../impop/scripts/pica2.py eurafr.sim \
   -t 0.999 \
   -l 500 \
   -r 5
-# -> 0.31322113 (sequence length: 500)
 
-rm temp.agc.AFREUR
+rm temp.agc.afr.eur
 ```
+>> 0.00000528 (sequence length: 500)
 
-5. Compute the summary statistics:
+
+5. Compute the Hudson Fst :
 ```
-piAB = 0.5 * (0.00510773 + 0.15271961)
-Fst  = (0.31322113 - piAB) / 0.31322113
+> piAB = 0.5 * ( 0.00000279 + 0.00000577)
+> Fst  = ( 0.00000528 - piAB) /  0.00000528
+> Fst
+[1] 0.1893939
+
 ```
 
 
 
 
 ## run_fst_impg.sh
+
+```
+echo -e "chr2\t109332703\t109382703" | bedtools makewindows -b - -w 500 > darc.bed
+```
+
 
 1. Prepare a BED file with windows that satisfy `impg similarity` constraints (recommended ≤10 kb):
 ```
