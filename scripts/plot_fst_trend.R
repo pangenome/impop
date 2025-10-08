@@ -269,6 +269,13 @@ format_plain_coord <- function(bp) {
   fmt
 }
 
+format_mb_coord <- function(bp) {
+  bp <- as.numeric(bp)
+  fmt <- sprintf("%.2f", bp / 1e6)
+  fmt[is.na(bp)] <- NA_character_
+  fmt
+}
+
 plot_fst_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL) {
   df <- df |> dplyr::arrange(factor(chrom, levels = unique(chrom)))
 
@@ -331,7 +338,7 @@ plot_fst_trend <- function(df, output, title = NULL, dpi = 150, highlights = NUL
     local_breaks <- local_breaks[local_breaks >= row$start_bp & local_breaks <= row$end_bp]
     data.frame(
       pos = row$offset + local_breaks,
-      label = format_plain_coord(local_breaks),
+      label = format_mb_coord(local_breaks),
       stringsAsFactors = FALSE
     )
   })
@@ -353,6 +360,12 @@ plot_fst_trend <- function(df, output, title = NULL, dpi = 150, highlights = NUL
     } else {
       "Chromosome"
     }
+  }
+
+  x_axis_label <- if (chrom_axis_title == "Chromosome") {
+    "Chromosome position (Mb)"
+  } else {
+    sprintf("%s position (Mb)", chrom_axis_title)
   }
 
   vlines <- chrom_offsets$offset
@@ -398,7 +411,7 @@ plot_fst_trend <- function(df, output, title = NULL, dpi = 150, highlights = NUL
   plt <- plt +
     ggplot2::geom_line(linewidth = 0.6) +
     ggplot2::geom_point(size = 1.2) +
-    ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::theme_minimal(base_size = 14) +
     ggplot2::theme(
       plot.background = ggplot2::element_rect(fill = "white", colour = NA),
       panel.background = ggplot2::element_rect(fill = "white", colour = NA),
@@ -408,16 +421,16 @@ plot_fst_trend <- function(df, output, title = NULL, dpi = 150, highlights = NUL
     ggplot2::labs(
       title = title,
       subtitle = subtitle_text,
-      x = chrom_axis_title,
+      x = x_axis_label,
       y = expression(F[ST]),
-      colour = "Comparison"
+      colour = NULL
     ) +
     ggplot2::scale_x_continuous(
       breaks = tick_df$pos,
       labels = tick_df$label
     ) +
     ggplot2::scale_colour_manual(values = colour_values) +
-    ggplot2::guides(colour = ggplot2::guide_legend(title = "Comparison")) +
+    ggplot2::guides(colour = ggplot2::guide_legend(title = NULL)) +
     ggplot2::theme(panel.grid.major.x = ggplot2::element_blank(), panel.grid.minor.x = ggplot2::element_blank())
 
   if (!is.null(label_df) && nrow(label_df) > 0) {

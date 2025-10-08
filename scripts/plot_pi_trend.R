@@ -264,7 +264,14 @@ format_bp_value <- function(bp) {
 
 format_plain_coord <- function(bp) {
   bp <- as.numeric(bp)
-  fmt <- format(round(bp), big.mark = ",", scientific = FALSE, trim = TRUE)
+  fmt <- format(round(bp), scientific = FALSE, trim = TRUE)
+  fmt[is.na(bp)] <- NA_character_
+  fmt
+}
+
+format_mb_coord <- function(bp, digits = 2) {
+  bp <- as.numeric(bp)
+  fmt <- sprintf(paste0("%.", digits, "f"), bp / 1e6)
   fmt[is.na(bp)] <- NA_character_
   fmt
 }
@@ -275,9 +282,10 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
   chrom_offsets <- compute_offsets(df)
   df <- dplyr::left_join(df, chrom_offsets[, c("chrom", "offset")], by = "chrom")
   df$genome_pos <- df$midpoint + df$offset
+  df$genome_pos_mb <- df$genome_pos / 1e6
 
   pop_levels <- unique(df$label)
-  base_cols <- c("#ff595e", "#ffca3a", "#8ac926", "#1982c4", "#6a4c93")
+  base_cols <- c("#d62728", "#1f77b4", "#2ca02c", "#9467bd", "#ff7f0e")
   if (length(pop_levels) <= length(base_cols)) {
     colour_values <- base_cols[seq_along(pop_levels)]
   } else {
@@ -330,11 +338,27 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
     local_breaks <- sort(unique(c(row$start_bp, row$end_bp, local_breaks)))
     local_breaks <- local_breaks[local_breaks >= row$start_bp & local_breaks <= row$end_bp]
     data.frame(
-      pos = row$offset + local_breaks,
-      label = format_plain_coord(local_breaks),
+      pos = (row$offset + local_breaks) / 1e6,
+      label = format_mb_coord(local_breaks),
       stringsAsFactors = FALSE
     )
   })
+
+  if (is.null(title)) {
+    chrom_names <- unique(region_summary$chrom)
+    region_start <- min(df$start, na.rm = TRUE)
+    region_end <- max(df$end, na.rm = TRUE)
+    if (length(chrom_names) == 1) {
+      title <- sprintf(
+        "PICA Output: Nucleotide Diversity Across %s:%s-%s",
+        chrom_names,
+        format_plain_coord(region_start),
+        format_plain_coord(region_end)
+      )
+    } else {
+      title <- "PICA Output: Nucleotide Diversity Across Multiple Regions"
+    }
+  }
 
   tick_df <- if (length(tick_list) > 0) {
     dplyr::bind_rows(tick_list) |>
@@ -349,14 +373,14 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
     stripped <- sub("^chr", "", chrom_names, ignore.case = TRUE)
     stripped <- sub("^chromosome ", "", stripped, ignore.case = TRUE)
     if (length(stripped) == 1) {
-      sprintf("Chromosome %s", stripped)
+      sprintf("Genomic Position (Mb, chr%s)", stripped)
     } else {
-      "Chromosome"
+      "Genomic Position (Mb)"
     }
   }
 
   vlines <- chrom_offsets$offset
-  vlines <- vlines[vlines != 0]
+  vlines <- vlines[vlines != 0] / 1e6
 
   highlight_df <- NULL
   if (!is.null(highlights) && nrow(highlights) > 0) {
@@ -364,14 +388,14 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
       dplyr::left_join(chrom_offsets[, c("chrom", "offset")], by = "chrom") |>
       dplyr::filter(!is.na(offset)) |>
       dplyr::mutate(
-        xmin = start + offset,
-        xmax = end + offset,
+        xmin = (start + offset) / 1e6,
+        xmax = (end + offset) / 1e6,
         ymin = -Inf,
         ymax = Inf
       )
   }
 
-  plt <- ggplot2::ggplot(df, ggplot2::aes(x = genome_pos, y = pi, colour = label))
+  plt <- ggplot2::ggplot(df, ggplot2::aes(x = genome_pos_mb, y = pi, colour = label))
 
   if (!is.null(highlight_df) && nrow(highlight_df) > 0) {
     plt <- plt + ggplot2::geom_rect(
@@ -396,29 +420,40 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
   }
 
   plt <- plt +
-    ggplot2::geom_line(linewidth = 0.6) +
-    ggplot2::geom_point(size = 1.2) +
-    ggplot2::theme_minimal(base_size = 12) +
+    ggplot2::geom_line(linewidth = 0.9) +
+    ggplot2::geom_point(size = 2.4, stroke = 0) +
+    ggplot2::scale_y_log10() +
+    ggplot2::annotation_logticks(sides = "l", short = grid::unit(0.15, "cm"), mid = grid::unit(0.3, "cm"), long = grid::unit(0.45, "cm")) +
+    ggplot2::theme_minimal(base_size = 14) +
     ggplot2::theme(
       plot.background = ggplot2::element_rect(fill = "white", colour = NA),
       panel.background = ggplot2::element_rect(fill = "white", colour = NA),
-      legend.background = ggplot2::element_rect(fill = "white", colour = NA),
-      legend.key = ggplot2::element_rect(fill = "white", colour = NA)
+      legend.background = ggplot2::element_rect(fill = "white", colour = "grey80"),
+      legend.key = ggplot2::element_rect(fill = "white", colour = NA),
+      panel.grid.major.x = ggplot2::element_line(colour = "grey90", linewidth = 0.3),
+      panel.grid.minor.x = ggplot2::element_blank(),
+      panel.grid.major.y = ggplot2::element_line(colour = "grey90", linewidth = 0.3),
+      panel.grid.minor.y = ggplot2::element_blank(),
+      plot.title = ggplot2::element_text(face = "bold", size = 16, hjust = 0.5),
+      plot.subtitle = ggplot2::element_text(size = 12, hjust = 0.5),
+      legend.position = c(0.98, 0.98),
+      legend.justification = c(1, 1)
     ) +
     ggplot2::labs(
       title = title,
       subtitle = subtitle_text,
       x = chrom_axis_title,
-      y = expression(pi),
+      y = expression(paste("Nucleotide Diversity (" * pi * ") - Log Scale")),
       colour = "Population"
     ) +
     ggplot2::scale_x_continuous(
       breaks = tick_df$pos,
-      labels = tick_df$label
+      labels = tick_df$label,
+      expand = ggplot2::expansion(mult = c(0.01, 0.03))
     ) +
     ggplot2::scale_colour_manual(values = colour_values) +
     ggplot2::guides(colour = ggplot2::guide_legend(title = "Population")) +
-    ggplot2::theme(panel.grid.major.x = ggplot2::element_blank(), panel.grid.minor.x = ggplot2::element_blank())
+    ggplot2::coord_cartesian(clip = "off")
 
   if (!is.null(label_df) && nrow(label_df) > 0) {
     plt <- plt +
@@ -434,10 +469,10 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
   }
 
   if (length(vlines) > 0) {
-    plt <- plt + ggplot2::geom_vline(xintercept = vlines, colour = "grey70", linetype = "dashed", linewidth = 0.3)
+    plt <- plt + ggplot2::geom_vline(xintercept = vlines, colour = "grey80", linetype = "dashed", linewidth = 0.4)
   }
   message(sprintf("Saving plot to %s", output))
-  ggplot2::ggsave(filename = output, plot = plt, width = 11, height = 4, dpi = dpi, units = "in")
+  ggplot2::ggsave(filename = output, plot = plt, width = 12, height = 6.5, dpi = dpi, units = "in")
 }
 
 main <- function() {

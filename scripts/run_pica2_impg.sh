@@ -5,6 +5,7 @@ set -euo pipefail
 # Default paths
 PAF_FILE="../data/hprc465vschm13.aln.paf.gz"
 SEQUENCE_FILES="../data/HPRC_r2_assemblies_0.6.1.agc"
+REGION_PREFIX="CHM13#0#"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT_PATH="${SCRIPT_DIR}/pica2.py"
 
@@ -18,6 +19,7 @@ Usage: $0 -b <bed_file> -t <threshold> -r <r_value> [options]
   -u  File with assemblies to subset (passed to --subset-sequence-list)
   -l  Override sequence length passed to pica2.py
   -o  Write output table to file (default: stdout)
+  -P  Region prefix for impg (default: ${REGION_PREFIX})
 
   pica2 options:
     -t  Similarity threshold for pica2.py (required)
@@ -32,7 +34,7 @@ USAGE
 }
 
 # Parse command line options
-while getopts "b:t:r:p:s:u:l:o:h" opt; do
+while getopts "b:t:r:p:s:u:l:o:P:h" opt; do
     case $opt in
         b) BED_FILE="$OPTARG" ;;
         t) THRESHOLD="$OPTARG" ;;
@@ -42,6 +44,7 @@ while getopts "b:t:r:p:s:u:l:o:h" opt; do
         u) SUBSET_LIST="$OPTARG" ;;
         l) SEQUENCE_LENGTH="$OPTARG" ;;
         o) OUTPUT_FILE="$OPTARG" ;;
+        P) REGION_PREFIX="$OPTARG" ;;
         h) usage ;;
         *) usage ;;
     esac
@@ -133,7 +136,19 @@ while IFS=$'\t' read -r chr start end name; do
         continue
     fi
 
-    REGION="CHM13#0#${chr}:${start}-${end}"
+    if [ -n "$REGION_PREFIX" ]; then
+        # Avoid duplicating prefix when BED entries already carry it
+        case "$chr" in
+            "$REGION_PREFIX"*)
+                REGION="${chr}:${start}-${end}"
+                ;;
+            *)
+                REGION="${REGION_PREFIX}${chr}:${start}-${end}"
+                ;;
+        esac
+    else
+        REGION="${chr}:${start}-${end}"
+    fi
     tmp_sim=$(mktemp tmp.sim.XXXXXX)
     tmpfiles+=("$tmp_sim")
 
