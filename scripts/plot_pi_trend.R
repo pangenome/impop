@@ -18,6 +18,7 @@ parse_args <- function() {
   dpi <- 150
   highlights <- character()
   highlight_bed <- NULL
+  log_scale <- TRUE
 
   i <- 1
   while (i <= length(args)) {
@@ -114,6 +115,12 @@ parse_args <- function() {
       next
     }
 
+    if (arg %in% c("--linear-y", "--no-log-y")) {
+      log_scale <- FALSE
+      i <- i + 1
+      next
+    }
+
     stop(sprintf("Unknown argument: %s", arg), call. = FALSE)
   }
 
@@ -128,7 +135,8 @@ parse_args <- function() {
     title = plot_title,
     dpi = dpi,
     highlights = highlights,
-    highlight_bed = highlight_bed
+    highlight_bed = highlight_bed,
+    log_scale = log_scale
   )
 }
 
@@ -276,7 +284,7 @@ format_mb_coord <- function(bp, digits = 2) {
   fmt
 }
 
-plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL) {
+plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL, log_scale = TRUE) {
   df <- df |> dplyr::arrange(factor(chrom, levels = unique(chrom)))
 
   chrom_offsets <- compute_offsets(df)
@@ -419,11 +427,15 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
     plt <- plt + ggplot2::expand_limits(y = max(label_df$y, ymax, na.rm = TRUE))
   }
 
+  y_label <- if (isTRUE(log_scale)) {
+    expression(paste("Nucleotide Diversity (" * pi * ") - Log Scale"))
+  } else {
+    expression(paste("Nucleotide Diversity (" * pi * ")"))
+  }
+
   plt <- plt +
     ggplot2::geom_line(linewidth = 0.9) +
     ggplot2::geom_point(size = 2.4, stroke = 0) +
-    ggplot2::scale_y_log10() +
-    ggplot2::annotation_logticks(sides = "l", short = grid::unit(0.15, "cm"), mid = grid::unit(0.3, "cm"), long = grid::unit(0.45, "cm")) +
     ggplot2::theme_minimal(base_size = 14) +
     ggplot2::theme(
       plot.background = ggplot2::element_rect(fill = "white", colour = NA),
@@ -443,7 +455,7 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
       title = title,
       subtitle = subtitle_text,
       x = chrom_axis_title,
-      y = expression(paste("Nucleotide Diversity (" * pi * ") - Log Scale")),
+      y = y_label,
       colour = "Population"
     ) +
     ggplot2::scale_x_continuous(
@@ -454,6 +466,18 @@ plot_pi_trend <- function(df, output, title = NULL, dpi = 150, highlights = NULL
     ggplot2::scale_colour_manual(values = colour_values) +
     ggplot2::guides(colour = ggplot2::guide_legend(title = "Population")) +
     ggplot2::coord_cartesian(clip = "off")
+
+  if (isTRUE(log_scale)) {
+    plt <- plt + ggplot2::scale_y_log10() +
+      ggplot2::annotation_logticks(
+        sides = "l",
+        short = grid::unit(0.15, "cm"),
+        mid = grid::unit(0.3, "cm"),
+        long = grid::unit(0.45, "cm")
+      )
+  } else {
+    plt <- plt + ggplot2::scale_y_continuous()
+  }
 
   if (!is.null(label_df) && nrow(label_df) > 0) {
     plt <- plt +
@@ -518,7 +542,7 @@ main <- function() {
     }
   }
 
-  plot_pi_trend(combined, opts$output, opts$title, opts$dpi, highlight_df)
+  plot_pi_trend(combined, opts$output, opts$title, opts$dpi, highlight_df, opts$log_scale)
 }
 
 if (identical(environment(), globalenv())) {
