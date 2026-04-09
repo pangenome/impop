@@ -9,7 +9,7 @@ REGION_PREFIX="CHM13#0#"
 LOG_DIR="./pica2_logs"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT_PATH="${SCRIPT_DIR}/pica2.py"
+SCRIPT_PATH="/../pica/pica2.py"
 
 usage() {
     cat <<USAGE

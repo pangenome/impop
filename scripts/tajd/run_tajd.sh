@@ -10,7 +10,7 @@ THRESHOLD="0.999"
 R_VALUE="5"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PICA_SCRIPT="${SCRIPT_DIR}/pica2.py"
+PICA_SCRIPT="/../pica/pica2.py"
 TAJIMA_SCRIPT="${SCRIPT_DIR}/tj_d.py"
 
 usage() {

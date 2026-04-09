@@ -1,0 +1,14 @@
+ - Tab-separated table describing pairwise comparisons of genomic intervals anchored on NC_000962.3.
+  - Each row lists a locus (chrom, start, end) and two samples (group.a, group.b) with their lengths and shared-overlap count.
+  - Similarity columns (intersection, jaccard.similarity, cosine.similarity, dice.similarity, estimated.identity) quantify how much the two intervals overlap, often maxed at 1 when
+  the segments match perfectly.
+  - Sample IDs (e.g., TB3169, M0016395_7, mada_112) suggest intra-species comparisons—likely Mycobacterium tuberculosis isolates.
+
+write python function to group sampleIDs based on similarity 
+
+impg similarity in one region 
+group sequences with similarity the group is the allele 
+
+1. allele feequencies at two loci 
+consider two loci A and B, each locus has multiple alleles, e.g. A has two alleles A1 and A2 and B has three alleles B1, B2, B3 
+Evaluate allele frequencies A1, A2, B1, B2, B3 

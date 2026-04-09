@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
-# Run a batch of h-fst comparisons across population panels.
+# Run Tajima's D calculations for several population panels.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
-RUN_H_FST="${PROJECT_ROOT}/scripts/run_h-fst.sh"
-PAF_FILE="${PROJECT_ROOT}/../data/hprc465vschm13.aln.paf.gz"
-SEQUENCE_FILES="${PROJECT_ROOT}/../data/HPRC_r2_assemblies_0.6.1.agc"
+PROJECT_ROOT="1000 4 24 27 30 46 122 134 135 1000cd "/../.." && pwd)"
+RUN_TAJD="/scripts/tajd/run_tajd.sh"
+PAF_FILE="/../data/hprc465vschm13.aln.paf.gz"
+SEQUENCE_FILES="/../data/HPRC_r2_assemblies_0.6.1.agc"
 METADATA_DIR="${PROJECT_ROOT}/../metadata"
 
 usage() {
@@ -37,8 +37,8 @@ while getopts ":b:p:s:h" opt; do
     esac
 done
 
-if [ ! -f "$RUN_H_FST" ]; then
-    echo "Error: run_h-fst.sh not found at $RUN_H_FST" >&2
+if [ ! -f "$RUN_TAJD" ]; then
+    echo "Error: run_tajd.sh not found at $RUN_TAJD" >&2
     exit 1
 fi
 
@@ -57,39 +57,28 @@ if [ ! -f "$BED_FILE" ]; then
     exit 1
 fi
 
-pairs=(
-    "EUR AFR eur.afr.fst"
-    "EAS AFR eas.afr.fst"
-    "SAS AFR sas.afr.fst"
-    "AMR AFR amr.afr.fst"
-    "EAS EUR eas.eur.fst"
-    "SAS EUR sas.eur.fst"
-    "AMR EUR amr.eur.fst"
-    "EAS SAS eas.sas.fst"
-    "AMR SAS amr.sas.fst"
-    "AMR EAS amr.eas.fst"
+panels=(
+    "EUR eur.tj"
+    "AFR afr.tj"
+    "EAS eas.tj"
+    "SAS sas.tj"
+    "AMR amr.tj"
 )
 
-for entry in "${pairs[@]}"; do
-    read -r group_a group_b output_file <<<"$entry"
-    subset_a="${METADATA_DIR}/agc.${group_a}"
-    subset_b="${METADATA_DIR}/agc.${group_b}"
+for entry in "${panels[@]}"; do
+    read -r group output_file <<<"$entry"
+    subset_file="${METADATA_DIR}/agc.${group}"
 
-    if [ ! -f "$subset_a" ]; then
-        echo "Error: subset list not found: $subset_a" >&2
-        exit 1
-    fi
-    if [ ! -f "$subset_b" ]; then
-        echo "Error: subset list not found: $subset_b" >&2
+    if [ ! -f "$subset_file" ]; then
+        echo "Error: subset list not found: $subset_file" >&2
         exit 1
     fi
 
-    echo "[h-fst] ${group_a} vs ${group_b} -> ${output_file}"
-    "${RUN_H_FST}" \
+    echo "[tajd] ${group} -> ${output_file}"
+    "${RUN_TAJD}" \
+        -b "$BED_FILE" \
+        -l "$subset_file" \
         -p "$PAF_FILE" \
         -s "$SEQUENCE_FILES" \
-        -b "$BED_FILE" \
-        -A "$subset_a" \
-        -B "$subset_b" \
         -o "$output_file"
 done

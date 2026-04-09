@@ -1,0 +1,36 @@
+##  allele frequencies at locus1 
+cluster_id      count   frequency
+c1      76      0.863636
+c2      7       0.079545
+c3      1       0.011364
+c4      1       0.011364
+c5      1       0.011364
+c6      1       0.011364
+c7      1       0.011364
+
+## frequencies at locus2 
+cluster_id      count   frequency
+c1      144     0.960000
+c2      1       0.006667
+c3      1       0.006667
+c4      1       0.006667
+c5      1       0.006667
+c6      1       0.006667
+c7      1       0.006667
+
+
+# haplotype frequencies 
+loc1loc2	count	freq
+c1c1	76	0.617
+c1c2	15	0.121
+c1c3	10	0.081
+c2c2	7	0.057
+c3c3	1	0.008
+c3c4	10	0.081
+c4c4	1	0.008
+c5c5	1	0.008
+c6c6	1	0.008
+c7c7	1	0.008
+
+
+
